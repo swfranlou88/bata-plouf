@@ -1,0 +1,116 @@
+# Construit l'application sur les quatre systèmes visés et publie les archives
+# dans une release GitHub. C'est exactement ce que fait outils/construire.py en
+# local, lancé sur des machines que nous n'avons pas.
+#
+# Déclenchement : une étiquette « v1.2.3 » poussée sur le dépôt.
+#
+#     git tag v0.2.0 && git push origin v0.2.0
+#
+# L'application installée chez l'utilisateur va ensuite chercher l'archive qui
+# correspond à sa machine, d'après le nom du fichier.
+
+name: Publier une version
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  construire:
+    name: ${{ matrix.etiquette }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            etiquette: macOS Apple Silicon
+          - os: macos-13
+            etiquette: macOS Intel
+          - os: windows-latest
+            etiquette: Windows
+          - os: ubuntu-latest
+            etiquette: Linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Qt a besoin de ces bibliothèques même sans écran : PyInstaller importe
+      # PySide6 pour l'analyser, et le dessin de l'icône instancie Qt.
+      - name: Bibliothèques système
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-xinerama0
+
+      - name: Installer uv
+        if: runner.os != 'Windows'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Installer uv (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://astral.sh/uv/install.ps1 | iex
+          "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      # Une étiquette qui ne correspond pas à __version__ ferait proposer la
+      # mise à jour en boucle : on s'arrête avant de publier quoi que ce soit.
+      - name: Vérifier que l'étiquette correspond à la version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' bata_plouf/__init__.py | head -1)
+          etiquette="${GITHUB_REF_NAME#v}"
+          echo "code : $version · étiquette : $etiquette"
+          if [ "$version" != "$etiquette" ]; then
+            echo "::error::L'étiquette $GITHUB_REF_NAME ne correspond pas à __version__ = $version"
+            exit 1
+          fi
+
+      - name: Construire l'application
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run --with pyinstaller python outils/construire.py
+
+      - name: Déposer l'archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: archives-${{ matrix.os }}
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publier:
+    name: Publier la release
+    needs: construire
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Récupérer toutes les archives
+        uses: actions/download-artifact@v4
+        with:
+          path: archives
+          merge-multiple: true
+
+      - name: Créer la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -lh archives/
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Bata-plouf $GITHUB_REF_NAME" \
+            --generate-notes \
+            archives/*.zip

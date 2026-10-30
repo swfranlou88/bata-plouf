@@ -1,0 +1,41 @@
+# Contrôles à chaque poussée : le domaine reste-t-il isolé, et tout
+# s'importe-t-il encore ? Léger et rapide, pour attraper les régressions
+# d'architecture avant qu'elles ne s'installent.
+
+name: Contrôles
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  controler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bibliothèques système
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0
+
+      - name: Installer uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Le domaine ne dépend de rien d'extérieur
+        run: uv run python outils/verifier_architecture.py
+
+      - name: Tous les modules s'importent
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run python outils/verifier_modules.py
+
+      - name: Les calculs métier tombent juste
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run python outils/verifier_metier.py
