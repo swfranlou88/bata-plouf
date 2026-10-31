@@ -105,12 +105,21 @@ jobs:
           path: archives
           merge-multiple: true
 
-      - name: Créer la release
+      # La release peut déjà exister : créée à la main depuis l'interface de
+      # GitHub, ou laissée par une tentative précédente. On la complète alors
+      # au lieu d'échouer.
+      - name: Publier les archives
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -lh archives/
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Bata-plouf $GITHUB_REF_NAME" \
-            --generate-notes \
-            archives/*.zip
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "La release $GITHUB_REF_NAME existe : on y joint les archives."
+            gh release upload "$GITHUB_REF_NAME" archives/*.zip --clobber
+          else
+            echo "Création de la release $GITHUB_REF_NAME."
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Bata-plouf $GITHUB_REF_NAME" \
+              --generate-notes \
+              archives/*.zip
+          fi

@@ -192,6 +192,10 @@ Ensuite, à chaque version : augmenter `__version__` dans
 `bata_plouf/__init__.py`, lancer les contrôles, pousser l'étiquette.
 GitHub Actions construit les quatre versions et publie la release.
 
+**Poussez l'étiquette, ne créez pas la release à la main** : c'est le workflow
+qui s'en charge. S'il en trouve une déjà créée, il y joint les archives plutôt
+que d'échouer, mais le chemin normal est l'étiquette seule.
+
 **Si l'étiquette ne correspond pas à `__version__`, la construction s'arrête.**
 Sans ce garde-fou, l'application reproposerait la même mise à jour sans fin.
 
