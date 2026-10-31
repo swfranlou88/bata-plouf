@@ -3,11 +3,55 @@
 Devis et factures pour le bâtiment. Tourne entièrement sur le poste de travail
 — macOS, Windows ou Linux — sans internet, sans serveur, sans base de données.
 
-## Lancer
+## Installer sur un nouveau Mac
 
-Double-cliquez sur `dist/Bata-plouf.app`. En développement :
+Deux cas à ne pas confondre : s'en servir ne demande rien, développer demande
+uv.
 
+### Pour s'en servir
+
+**Rien à installer** — ni Python, ni uv, ni git. L'application embarque Python
+et Qt, elle ne dépend de rien d'autre.
+
+1. Récupérer **`Installer Bata-plouf.app`** (373 Ko) : clé USB, courriel, ou la
+   page des releases du dépôt.
+2. Reçu par téléchargement, macOS le met en quarantaine — **clic droit →
+   Ouvrir** au premier lancement, une seule fois. Par clé USB, il s'ouvre
+   directement.
+3. Il détecte l'architecture du Mac, télécharge la dernière version publiée,
+   l'installe dans **Applications** et la lance.
+
+Sans installateur, l'archive `Bata-plouf-<version>-macos-<arch>.zip` de la
+release se déplie et se glisse à la main dans Applications.
+
+**Reprendre les données de l'ancien Mac** : copier le dossier
+`~/Documents/Bata-plouf`. L'Assistant de migration d'Apple le fait tout seul.
+Clients, devis, factures, modèle et réglages suivent.
+
+Ensuite, plus rien à faire : **à chaque ouverture**, le logiciel vérifie s'il
+existe une version plus récente et s'installe seul. Ce n'est pas un `git pull`
+— il télécharge l'archive publiée dans la release, pas le code source.
+
+### Pour développer
+
+uv installe le Python qu'il faut ; inutile de l'installer séparément.
+
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    git clone https://github.com/swfranlou88/bata-plouf.git
+    cd bata-plouf
     uv run python -m bata_plouf
+
+La dernière commande crée l'environnement, télécharge Python et PySide6, puis
+lance le logiciel : 1,2 Go et quelques minutes la première fois, immédiat
+ensuite. `Lancer en développement.command` fait la même chose d'un double-clic.
+
+Pour **construire** l'application, il faut en plus les outils en ligne de
+commande d'Xcode, d'où viennent `codesign`, `iconutil` et `ditto` — voir
+« Construire » plus bas :
+
+    xcode-select --install
+
+Récupérer les modifications : `git pull`.
 
 ## Les données
 
@@ -151,16 +195,13 @@ GitHub Actions construit les quatre versions et publie la release.
 **Si l'étiquette ne correspond pas à `__version__`, la construction s'arrête.**
 Sans ce garde-fou, l'application reproposerait la même mise à jour sans fin.
 
-## Livrer et mettre à jour
+## Mettre à jour
 
-Une seule fois, remettez `dist/Installer Bata-plouf.app` (373 Ko) à
-l'utilisateur. Reçu par téléchargement, il faut **clic droit → Ouvrir** au
-premier lancement ; par clé USB, il s'ouvre directement. Il installe la
-dernière version et la lance.
-
-Ensuite le logiciel se met à jour seul. Trois modes dans Paramètres :
-**automatique** (par défaut : téléchargée et installée au lancement, sans rien
-demander), **me demander**, ou **jamais** (aucun accès au réseau).
+L'installateur se remet une seule fois à l'utilisateur — voir « Installer sur
+un nouveau Mac ». Ensuite le logiciel se met à jour seul, selon trois modes
+réglables dans les Paramètres : **automatique** (par défaut : téléchargée et
+installée au lancement, sans rien demander), **me demander**, ou **jamais**
+(aucun accès au réseau).
 
 Un échec est silencieux en mode automatique : le logiciel s'ouvre dans sa
 version actuelle et le bandeau de l'accueil permet de réessayer. Une mise à
