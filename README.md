@@ -199,6 +199,11 @@ que d'échouer, mais le chemin normal est l'étiquette seule.
 **Si l'étiquette ne correspond pas à `__version__`, la construction s'arrête.**
 Sans ce garde-fou, l'application reproposerait la même mise à jour sans fin.
 
+Les images macOS de GitHub expirent régulièrement : le workflow vise
+`macos-15` et `macos-15-intel`, à relever quand elles seront retirées. **Les
+runners Intel s'arrêtent en août 2027** — après quoi la version macOS Intel ne
+pourra plus être construite sur GitHub.
+
 ## Mettre à jour
 
 L'installateur se remet une seule fois à l'utilisateur — voir « Installer sur

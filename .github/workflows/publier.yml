@@ -27,9 +27,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          # Les images macOS de GitHub ne durent pas : macos-14 est retiré le
+          # 2 novembre 2026 (annonce runner-images n° 13518) et macos-13 l'est
+          # depuis décembre 2025 (n° 13046). On nomme la version explicitement
+          # plutôt que « latest », qui change sous les pieds sans prévenir.
+          - os: macos-15
             etiquette: macOS Apple Silicon
-          - os: macos-13
+          # Dernière image Intel proposée par GitHub, annoncée jusqu'en
+          # août 2027 ; après quoi il n'y aura plus de construction Intel
+          # possible sur les runners hébergés.
+          - os: macos-15-intel
             etiquette: macOS Intel
           - os: windows-latest
             etiquette: Windows
