@@ -162,9 +162,14 @@ class VueParametres(QWidget):
         principale.setContentsMargins(16, 14, 16, 14)
         principale.setSpacing(10)
         principale.addWidget(titre("Paramètres"))
-        principale.addWidget(discret(
+        # ESSAI DE MISE À JOUR — ce rouge n'a pas d'autre raison d'être que
+        # de vérifier qu'une nouvelle version arrive bien jusqu'au poste de
+        # l'utilisateur. À remettre en gris une fois le test concluant.
+        avertissement = discret(
             "Ces informations figurent sur chaque devis imprimé. Le SIRET et "
-            "l'assurance décennale sont des mentions obligatoires."))
+            "l'assurance décennale sont des mentions obligatoires.")
+        avertissement.setStyleSheet("color: #c0392b; font-weight: bold;")
+        principale.addWidget(avertissement)
         principale.addWidget(defilement, 1)
         principale.addWidget(barre("-", bouton("Enregistrer", self.enregistrer, principal=True)))
 
