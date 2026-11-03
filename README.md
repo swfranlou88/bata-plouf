@@ -13,8 +13,9 @@ uv.
 **Rien à installer** — ni Python, ni uv, ni git. L'application embarque Python
 et Qt, elle ne dépend de rien d'autre.
 
-1. Récupérer **`Installer-Bata-plouf.zip`** (171 Ko) sur la page des releases —
-   https://github.com/swfranlou88/bata-plouf/releases — ou par clé USB.
+1. Télécharger **`Installer-Bata-plouf.zip`** (171 Ko). Ce lien sert toujours
+   la dernière version, il ne se périme pas :
+   https://github.com/swfranlou88/bata-plouf/releases/latest/download/Installer-Bata-plouf.zip
 2. Reçu par téléchargement, macOS le met en quarantaine — **clic droit →
    Ouvrir** au premier lancement, une seule fois. Par clé USB, il s'ouvre
    directement.
