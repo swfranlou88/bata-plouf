@@ -57,11 +57,17 @@ def main() -> int:
         Article(reference="PAR20", designation="Parpaing", prix_vente=62))
 
     print("\nFiches")
-    verifier("le client reçoit un numéro", client.numero == "C0001", client.numero)
+    verifier("le client reçoit un numéro", client.numero == "1", client.numero)
     second = depot.enregistrer_client(Client(nom="Lafont"))
-    verifier("la numérotation s'incrémente", second.numero == "C0002", second.numero)
+    verifier("la numérotation s'incrémente", second.numero == "2", second.numero)
     verifier("le numéro sert à la recherche",
-             depot.clients("C0002") == [second])
+             depot.clients("2") == [second])
+    # La reprise de l'ancien logiciel amène des numéros déjà attribués ; la
+    # série doit les prolonger, pas recommencer à côté d'eux.
+    depot.enregistrer_client(Client(nom="Ancien", numero="697"))
+    verifier("la série reprend après un numéro repris",
+             depot.prochain_numero_client() == "698",
+             depot.prochain_numero_client())
     verifier("le bénéfice d'un article se calcule",
              Article(prix_achat=38, prix_vente=62).benefice == 24.0)
     verifier("l'article garde son fournisseur",
@@ -102,6 +108,13 @@ def main() -> int:
     totale = depot.enregistrer_facture(generer_facture_totale(depot, simple))
     verifier("la facture reprend toutes les lignes du devis",
              len(totale.lignes) == len(simple.lignes))
+    # Une suite de factures doit être continue et sans trou, et celle de
+    # l'entreprise court depuis son ancien logiciel : la série se prolonge.
+    verifier("la facture reçoit un numéro entier", totale.numero == "1",
+             totale.numero)
+    verifier("la série des factures s'incrémente sans trou",
+             depot.prochain_numero_facture() == "2",
+             depot.prochain_numero_facture())
     verifier("pour le même montant",
              totale.totaux().total_ttc == simple.totaux().total_ttc,
              f"{euros(totale.totaux().total_ttc)} / {euros(simple.totaux().total_ttc)}")

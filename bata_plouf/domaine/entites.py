@@ -15,7 +15,9 @@ from .calculs import Totaux, calculer_totaux, sou
 
 # --- vocabulaire métier ---------------------------------------------------
 
-UNITES = ["u", "ml", "m²", "m³", "kg", "t", "h", "j", "forfait", "ens"]
+UNITES = ["u", "ml", "m²", "m³", "kg", "t", "h", "j", "forfait", "ens",
+          # Conditionnements employés sur les bons de fournitures.
+          "l", "sac", "bt", "rl", "pot", "paq"]
 
 # 20 % neuf · 10 % rénovation de logement de plus de 2 ans
 # 5,5 % rénovation énergétique · 0 % autoliquidation (sous-traitance)

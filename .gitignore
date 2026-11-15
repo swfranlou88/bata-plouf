@@ -181,3 +181,10 @@ cython_debug/
 .cursorindexingignore
 # Propre à Bata-plouf
 ressources/icone.iconset/
+
+# Données de l'ancien logiciel — jamais dans le dépôt, ce sont les
+# clients et les devis réels.
+Sauvegardes/
+Sauvegardes.zip
+.DS_Store
+*.rar

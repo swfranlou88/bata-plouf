@@ -13,6 +13,7 @@ USB ou déposer dans iCloud :
       articles.json        la bibliothèque de prix
       compteurs.json       le dernier numéro de devis attribué
       devis/D2026-0001.json   un fichier par devis
+      factures/1451.json      un fichier par facture
       pdf/                 les devis imprimés, archivés
       sauvegardes/         un instantané horodaté par ouverture du logiciel
 
@@ -265,21 +266,20 @@ class DepotFichiers:
     def prochain_numero_client(self, reserver: bool = False) -> str:
         """Séquence continue, sans année : un client dure plus longtemps qu'un an.
 
-        Le compteur est recalé sur les fiches existantes, pour qu'une
-        restauration de sauvegarde ne crée jamais de doublon.
+        Les numéros sont de simples entiers, pour prolonger celle que
+        l'entreprise tenait dans son ancien logiciel plutôt que d'ouvrir une
+        série parallèle. Le compteur est recalé sur les fiches existantes,
+        pour qu'une restauration de sauvegarde ne crée jamais de doublon.
         """
         dernier = int(self.compteurs.get("client", 0))
         for client in self._clients.values():
-            if client.numero.startswith("C"):
-                try:
-                    dernier = max(dernier, int(client.numero[1:]))
-                except ValueError:
-                    continue
+            if client.numero.isdigit():
+                dernier = max(dernier, int(client.numero))
         suivant = dernier + 1
         if reserver:
             self.compteurs["client"] = suivant
             ecrire_json(self.f_compteurs, self.compteurs)
-        return f"C{suivant:04d}"
+        return str(suivant)
 
     def enregistrer_client(self, client: Client) -> Client:
         if not client.numero:
@@ -569,22 +569,26 @@ class DepotFichiers:
         return self.d_factures / f"{base}.json"
 
     def prochain_numero_facture(self, reserver: bool = False) -> str:
-        """Séquence continue et distincte de celle des devis : F2026-0001."""
-        annee = datetime.now().year
-        cle = f"facture-{annee}"
-        dernier = int(self.compteurs.get(cle, 0))
-        prefixe = f"F{annee}-"
+        """Séquence continue d'entiers, distincte de celle des devis : 1451…
+
+        Une numérotation de factures doit être continue et sans trou, et
+        celle de l'entreprise court depuis son ancien logiciel. On la
+        prolonge, au lieu d'ouvrir une seconde série que le comptable
+        aurait à rapprocher de la première. Elle n'est donc pas remise à
+        zéro chaque année, ce qu'aucune règle n'impose.
+
+        Le compteur est recalé sur les factures existantes, pour qu'une
+        restauration de sauvegarde ne crée jamais de doublon.
+        """
+        dernier = int(self.compteurs.get("facture", 0))
         for facture in self._factures.values():
-            if facture.numero.startswith(prefixe):
-                try:
-                    dernier = max(dernier, int(facture.numero[len(prefixe):]))
-                except ValueError:
-                    continue
+            if facture.numero.isdigit():
+                dernier = max(dernier, int(facture.numero))
         suivant = dernier + 1
         if reserver:
-            self.compteurs[cle] = suivant
+            self.compteurs["facture"] = suivant
             ecrire_json(self.f_compteurs, self.compteurs)
-        return f"{prefixe}{suivant:04d}"
+        return str(suivant)
 
     def nom_devis(self, devis_id: str) -> str:
         devis = self._devis.get(devis_id)
