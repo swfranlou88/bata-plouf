@@ -217,6 +217,25 @@ def main() -> int:
     verifier("plus rien à facturer sur ce devis",
              reste_a_facturer(depot, detaille) == sou(0))
 
+    print("\nTableau de bord")
+    # L'accueil annonce « facturé cette année » : une facture d'un exercice
+    # antérieur ne doit pas s'y ajouter, alors qu'elle compte toujours dans
+    # ce qui reste à encaisser.
+    avant = depot.statistiques()
+    ancienne = depot.enregistrer_facture(Facture(
+        client_id=client.id, statut="émise", date_facture="2019-06-14",
+        lignes=[Ligne(designation="Mur", quantite=1, unite="ml",
+                      prix_unitaire=1000, taux_tva=10)]))
+    apres = depot.statistiques()
+    verifier("une facture d'un exercice passé ne gonfle pas l'année en cours",
+             apres["ht_facture"] == avant["ht_facture"],
+             f"{euros(avant['ht_facture'])} → {euros(apres['ht_facture'])}")
+    verifier("mais elle reste à encaisser",
+             apres["ttc_impaye"] - avant["ttc_impaye"] == sou(1100),
+             euros(apres["ttc_impaye"] - avant["ttc_impaye"]))
+    # On la laisse en place : émise, elle ne peut plus être supprimée — c'est
+    # justement la règle que le contrôle suivant vérifie.
+
     print("\nVerrou comptable")
     try:
         depot.supprimer_facture(s1.id)

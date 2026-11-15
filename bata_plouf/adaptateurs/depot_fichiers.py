@@ -655,8 +655,16 @@ class DepotFichiers:
         en_attente = sum((calculer_totaux(d).total_ht for d in self.devis()
                           if d.statut == "envoyé"), start=zero_)
         zero = __import__("decimal").Decimal("0.00")
+        # L'écran d'accueil annonce « facturé cette année », et il faut donc
+        # s'en tenir à l'année en cours. Le filtre manquait : avec les neuf
+        # ans d'historique repris de l'ancien logiciel, c'est le cumul de
+        # toutes les années qui s'affichait sous ce libellé.
+        annee = f"{datetime.now().year}-"
         facture_ht = sum((calculer_totaux(f).total_ht for f in self.factures()
-                          if f.statut in ("émise", "payée")), start=zero)
+                          if f.statut in ("émise", "payée")
+                          and f.date_facture.startswith(annee)), start=zero)
+        # « Restant à encaisser » et « en retard », eux, ne se bornent pas à
+        # l'année : une facture impayée de l'an dernier reste à encaisser.
         impaye_ttc = sum((calculer_totaux(f).total_ttc for f in self.factures()
                           if f.statut == "émise"), start=zero)
         en_retard = sum((calculer_totaux(f).total_ttc for f in self.factures()
