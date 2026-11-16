@@ -1,4 +1,4 @@
-"""Écran d'accueil : les cinq catégories, et l'essentiel en un coup d'œil."""
+"""Écran d'accueil : les six catégories, et l'essentiel en un coup d'œil."""
 
 from PySide6.QtCore import QDate, QLocale, Qt, Signal
 from PySide6.QtWidgets import (
@@ -13,7 +13,8 @@ from .commun import barre, bouton, discret
 RUBRIQUES_ACCUEIL = [
     ("clients", "Clients", "Particuliers et professionnels"),
     ("devis", "Devis", "Chiffrage et propositions"),
-    ("catalogue", "Matériaux", "Bibliothèque de prix"),
+    ("catalogue", "Matériaux", "Fournitures et prix d'achat"),
+    ("ouvrages", "Ouvrages", "Ouvrages posés, prix de vente"),
     ("factures", "Factures", "Acomptes, situations, soldes"),
     ("chantiers", "Chantiers", "Suivi des affaires en cours"),
 ]
@@ -171,7 +172,8 @@ class VueAccueil(QWidget):
             carte.clicked.connect(lambda _=False, c=cle: self.ouvrir_rubrique.emit(c))
             self.cartes[cle] = carte
             grille.addWidget(carte, index // 3, index % 3)
-        # La sixième case accueille les raccourcis plutôt qu'un trou
+        # Les raccourcis prennent la case libre qui suit les catégories,
+        # plutôt que de laisser un trou au bout de la dernière rangée.
         raccourcis = QFrame()
         raccourcis.setMaximumHeight(150)
         raccourcis.setFrameShape(QFrame.Shape.StyledPanel)
@@ -179,12 +181,26 @@ class VueAccueil(QWidget):
         colonne.setContentsMargins(18, 14, 18, 14)
         colonne.setSpacing(8)
         colonne.addWidget(discret("Raccourcis"))
-        colonne.addWidget(bouton("Nouveau devis", self.nouveau_devis.emit,
-                                 principal=True))
-        colonne.addWidget(bouton("Nouveau client", self.nouveau_client.emit))
-        colonne.addWidget(bouton("Nouvelle facture", self.nouvelle_facture.emit))
+        boutons = [
+            bouton("Nouveau devis", self.nouveau_devis.emit, principal=True),
+            bouton("Nouveau client", self.nouveau_client.emit),
+            bouton("Nouvelle facture", self.nouvelle_facture.emit),
+        ]
+        apres = len(RUBRIQUES_ACCUEIL)
+        largeur = 3 - apres % 3
+        if largeur > 1:
+            # Le bloc finit la rangée : les boutons s'y rangent côte à côte
+            # plutôt que de laisser une grande case aux trois quarts vide.
+            rangee = QHBoxLayout()
+            for b in boutons:
+                rangee.addWidget(b)
+            rangee.addStretch(1)
+            colonne.addLayout(rangee)
+        else:
+            for b in boutons:
+                colonne.addWidget(b)
         colonne.addStretch(1)
-        grille.addWidget(raccourcis, 1, 2)
+        grille.addWidget(raccourcis, apres // 3, apres % 3, 1, largeur)
 
         disposition = QVBoxLayout(self)
         disposition.setContentsMargins(22, 18, 22, 18)
@@ -227,7 +243,8 @@ class VueAccueil(QWidget):
             stats["devis"],
             f"{devis_attente} en attente de réponse" if devis_attente
             else "Chiffrage et propositions")
-        self.cartes["catalogue"].definir(stats["articles"])
+        self.cartes["catalogue"].definir(stats["materiaux"])
+        self.cartes["ouvrages"].definir(stats["ouvrages"])
         self.cartes["factures"].definir(
             stats["factures"],
             f"{factures_dues} à encaisser" if factures_dues

@@ -297,19 +297,32 @@ class VueChantiers(VueListe):
 
 
 class VueCatalogue(VueListe):
+    """Les fournitures : ce qui s'achète chez le fournisseur et se revend."""
+
     nom = "Matériaux"
     mot_element = "article"
     libelle_nouveau = "Nouvel article"
     indication_recherche = "Référence, désignation, famille…"
+    # Ce que cette liste montre. Ici tout sauf les ouvrages, pour qu'une
+    # fiche d'un type inattendu reste visible quelque part plutôt que de
+    # disparaître des deux écrans.
+    type_cree = "matériau"
+    types_filtrables = ["matériau", "main d'œuvre"]
+
+    def retient(self, article) -> bool:
+        return article.type != "ouvrage"
 
     def __init__(self, depot, parent=None):
         self.famille = liste_deroulante(["Toutes les familles"] + FAMILLES)
-        self.type = liste_deroulante(["Tous les types"] + TYPES_ARTICLE)
+        self.type = liste_deroulante(["Tous les types"] + self.types_filtrables)
         super().__init__(depot, parent)
         self.famille.currentIndexChanged.connect(self.rafraichir)
         self.type.currentIndexChanged.connect(self.rafraichir)
 
     def filtres(self):
+        # Un seul type possible : la liste déroulante n'aurait rien à offrir.
+        if len(self.types_filtrables) < 2:
+            return [self.famille]
         return [self.famille, self.type]
 
     def actions(self):
@@ -340,12 +353,14 @@ class VueCatalogue(VueListe):
     def charger(self):
         famille = self.famille.currentText()
         type_ = self.type.currentText()
-        return self.depot.articles(
+        articles = self.depot.articles(
             recherche=self.recherche.text().strip(),
             famille="" if famille.startswith("Toutes") else famille,
-            type_="" if type_.startswith("Tous") else type_,
+            type_=("" if type_.startswith("Tous") or len(self.types_filtrables) < 2
+                   else type_),
             supprimes=self.archives,
         )
+        return [a for a in articles if self.retient(a)]
 
     def libelle(self, article):
         return article.designation
@@ -368,7 +383,10 @@ class VueCatalogue(VueListe):
         super().rafraichir()
 
     def nouveau(self):
-        dialogue = DialogueArticle(self, self.depot)
+        from ...domaine import Article
+        neuf = Article(type=self.type_cree,
+                       taux_tva=self.depot.societe.taux_tva_defaut)
+        dialogue = DialogueArticle(self, self.depot, neuf)
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_article(dialogue.resultat())
             self._signaler()
@@ -394,3 +412,30 @@ class VueCatalogue(VueListe):
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_article(dialogue.resultat())
             self._signaler()
+
+
+class VueOuvrages(VueCatalogue):
+    """Les ouvrages : une prestation posée, prix de vente tout compris.
+
+    Même bibliothèque que les matériaux, même fiche, mais deux écrans :
+    chercher un sac de ciment et chercher un prix de carrelage posé ne sont
+    pas le même geste, et mêler les deux fait mille cinq cents lignes.
+    """
+
+    nom = "Ouvrages"
+    mot_element = "ouvrage"
+    libelle_nouveau = "Nouvel ouvrage"
+    indication_recherche = "Code, désignation, famille…"
+    type_cree = "ouvrage"
+    types_filtrables = ["ouvrage"]
+
+    def retient(self, article) -> bool:
+        return article.type == "ouvrage"
+
+    def colonnes(self):
+        # Un ouvrage ne s'achète chez personne : la colonne du fournisseur
+        # resterait vide, et sa référence est le code que lui donnait
+        # l'ancien logiciel, pas une référence de catalogue.
+        gardees = [c for c in super().colonnes() if c.titre != "Fournisseur"]
+        gardees[0].titre = "Code"
+        return gardees

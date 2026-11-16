@@ -15,7 +15,7 @@ from .devis import EditeurDevis, VueDevis
 from .factures import DialogueFacturer, EditeurFacture, VueFactures
 from .gabarit import VueGabarit
 from .parametres import VueParametres
-from .vues import VueCatalogue, VueChantiers, VueClients
+from .vues import VueCatalogue, VueChantiers, VueClients, VueOuvrages
 
 # L'ordre de la barre latérale reprend celui des catégories de l'accueil.
 RUBRIQUES = [
@@ -23,6 +23,7 @@ RUBRIQUES = [
     ("Clients", "clients"),
     ("Devis", "devis"),
     ("Matériaux", "catalogue"),
+    ("Ouvrages", "ouvrages"),
     ("Factures", "factures"),
     ("Chantiers", "chantiers"),
     ("Modèle du devis", "gabarit"),
@@ -54,6 +55,7 @@ class FenetrePrincipale(QMainWindow):
         self.vue_clients = VueClients(depot)
         self.vue_chantiers = VueChantiers(depot)
         self.vue_catalogue = VueCatalogue(depot)
+        self.vue_ouvrages = VueOuvrages(depot)
         self.vue_gabarit = VueGabarit(depot)
         self.vue_parametres = VueParametres(depot)
 
@@ -251,8 +253,8 @@ class FenetrePrincipale(QMainWindow):
     def vues(self) -> tuple:
         """Les écrans, dans l'ordre de la barre de navigation."""
         return (self.vue_accueil, self.vue_clients, self.vue_devis,
-                self.vue_catalogue, self.vue_factures, self.vue_chantiers,
-                self.vue_gabarit, self.vue_parametres)
+                self.vue_catalogue, self.vue_ouvrages, self.vue_factures,
+                self.vue_chantiers, self.vue_gabarit, self.vue_parametres)
 
     @staticmethod
     def rubrique(cle: str) -> int:

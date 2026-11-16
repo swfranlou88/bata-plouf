@@ -428,6 +428,20 @@ def main() -> int:
     verifier("mais la bibliothèque les retrouve",
              relu.id in [a.id for a in depot.articles("2.930")])
 
+    verifier("un ouvrage et un matériau se rangent à part",
+             depot.statistiques()["materiaux"]
+             + depot.statistiques()["ouvrages"]
+             == depot.statistiques()["articles"],
+             str({c: depot.statistiques()[c]
+                  for c in ("articles", "materiaux", "ouvrages")}))
+    pose = depot.enregistrer_article(
+        Article(designation="Carrelage posé", type="ouvrage", prix_vente=48.0))
+    verifier("l'ouvrage grossit le bon compte",
+             depot.statistiques()["ouvrages"] >= 1
+             and pose.id in [a.id for a in depot.articles(type_="ouvrage")])
+    verifier("et pas celui des matériaux",
+             pose.id not in [a.id for a in depot.articles(type_="matériau")])
+
     print("\nRecherche d'un client")
     from bata_plouf.adaptateurs.interface.commun import (
         cle_recherche, etiquette_client,

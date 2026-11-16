@@ -113,9 +113,15 @@ adaptateur. `outils/verifier_architecture.py` le vérifie.
 
 ## Les écrans
 
-L'accueil présente cinq catégories — clients, devis, matériaux, factures,
-chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie ouvre une
-liste avec création, modification et suppression.
+L'accueil présente six catégories — clients, devis, matériaux, ouvrages,
+factures, chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie
+ouvre une liste avec création, modification et suppression.
+
+**Matériaux** et **ouvrages** sont la même bibliothèque, séparée en deux
+écrans : d'un côté ce qui s'achète chez le fournisseur, de l'autre la
+prestation posée au prix de vente. Chercher un sac de ciment et chercher un
+prix de carrelage posé ne sont pas le même geste, et mêler les deux fait
+cinq mille lignes.
 
 Sur un devis ou une facture, le client se cherche au clavier : on tape trois
 lettres du nom, de la société ou de la ville et la liste se réduit. Accents

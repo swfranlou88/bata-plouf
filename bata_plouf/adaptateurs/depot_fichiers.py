@@ -674,10 +674,16 @@ class DepotFichiers:
                           if f.statut == "émise"), start=zero)
         en_retard = sum((calculer_totaux(f).total_ttc for f in self.factures()
                          if f.en_retard), start=zero)
+        # Matériaux et ouvrages ont leur écran chacun : un sac de ciment se
+        # commande, une heure de pose se vend. On les compte donc à part.
+        articles = self.articles()
+        ouvrages = [a for a in articles if a.type == "ouvrage"]
         return {
             "clients": len(self.clients()),
             "chantiers": len(self.chantiers()),
-            "articles": len(self.articles()),
+            "articles": len(articles),
+            "materiaux": len(articles) - len(ouvrages),
+            "ouvrages": len(ouvrages),
             "devis": len(self.devis()),
             "factures": len(self.factures()),
             "corbeille": self.taille_corbeille(),
