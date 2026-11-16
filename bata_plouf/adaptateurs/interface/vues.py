@@ -14,9 +14,9 @@ from PySide6.QtWidgets import (
 from ...domaine import FAMILLES, TYPES_ARTICLE, date_fr, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
-    CENTRE, Colonne, DROITE, ModeleListe, activer_le_tri, alerter, barre,
-    bouton, cle_numero, cle_recherche, confirmer, discret, liste_deroulante,
-    titre,
+    CENTRE, Colonne, DROITE, DelegueAmorce, ModeleListe, activer_le_tri,
+    alerter, amorce, barre, bouton, cle_numero, confirmer, discret,
+    liste_deroulante, titre,
 )
 from .dialogues import DialogueArticle, DialogueChantier, DialogueClient
 
@@ -318,12 +318,21 @@ class VueCatalogue(VueListe):
     def retient(self, article) -> bool:
         return article.type != "ouvrage"
 
+    # Les colonnes où la recherche peut mordre, et donc où la surbrillance
+    # a quelque chose à montrer : le code et le nom.
+    colonnes_cherchees = (0, 1)
+
     def __init__(self, depot, parent=None):
         self.famille = liste_deroulante(["Toutes les familles"] + FAMILLES)
         self.type = liste_deroulante(["Tous les types"] + self.types_filtrables)
+        # Avant le socle : il rafraîchit la liste dès sa construction, et
+        # cherche alors déjà la surbrillance.
+        self.surbrillance = DelegueAmorce()
         super().__init__(depot, parent)
         self.famille.currentIndexChanged.connect(self.rafraichir)
         self.type.currentIndexChanged.connect(self.rafraichir)
+        for colonne in self.colonnes_cherchees:
+            self.tableau.setItemDelegateForColumn(colonne, self.surbrillance)
 
     def filtres(self):
         # Un seul type possible : la liste déroulante n'aurait rien à offrir.
@@ -369,11 +378,16 @@ class VueCatalogue(VueListe):
         return [a for a in articles if self.correspond(a)]
 
     def correspond(self, article) -> bool:
-        """La recherche du bandeau, accents et traits d'union ignorés."""
-        cherche = cle_recherche(self.recherche.text())
+        """La recherche du bandeau : le début d'un nom ou d'un code.
+
+        Pas n'importe où dans le texte : quatre mille fiches se consultent
+        comme un index, et une liste filtrée doit pouvoir dire pourquoi
+        chacune est restée.
+        """
+        cherche = self.recherche.text().strip()
         if not cherche:
             return True
-        return any(cherche in cle_recherche(getattr(article, champ, ""))
+        return any(amorce(getattr(article, champ, ""), cherche)
                    for champ in self.champs_recherche)
 
     def libelle(self, article):
@@ -386,6 +400,7 @@ class VueCatalogue(VueListe):
         self.depot.restaurer_article(article.id)
 
     def rafraichir(self):
+        self.surbrillance.chercher(self.recherche.text().strip())
         familles = sorted(set(FAMILLES) | set(self.depot.familles()))
         courante = self.famille.currentText()
         if [self.famille.itemText(i) for i in range(1, self.famille.count())] != familles:

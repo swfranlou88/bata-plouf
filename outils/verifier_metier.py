@@ -439,12 +439,23 @@ def main() -> int:
             self.recherche = type("Champ", (), {"text": lambda _: texte})()
     relu.designation, relu.famille = "Carrelage posé", "Maçonnerie"
     relu.reference = "XX"
-    verifier("le nom trouve la fiche", cherche(Bandeau("carrelage"), relu))
+    verifier("le début du nom trouve la fiche", cherche(Bandeau("carrelage"), relu))
     verifier("le code aussi", cherche(Bandeau("xx"), relu))
-    verifier("l'accent ne gêne pas", cherche(Bandeau("posé"), relu)
-             and cherche(Bandeau("pose"), relu))
-    verifier("mais la famille ne répond plus",
-             not cherche(Bandeau("maçonnerie"), relu))
+    verifier("l'accent ne gêne pas",
+             cherche(Bandeau("carrelage pose"), relu)
+             and cherche(Bandeau("carrelage posé"), relu))
+    verifier("mais pas un mot pris au milieu",
+             not cherche(Bandeau("posé"), relu))
+    verifier("ni la famille", not cherche(Bandeau("maçonnerie"), relu))
+
+    from bata_plouf.adaptateurs.interface.commun import amorce
+    verifier("la part surlignée couvre ce qu'on a tapé",
+             amorce("Coffrage des linteaux", "coffrage des") == 12,
+             str(amorce("Coffrage des linteaux", "coffrage des")))
+    verifier("et tient compte des accents sans décaler",
+             amorce("Épinal", "epi") == 3, str(amorce("Épinal", "epi")))
+    verifier("rien à surligner quand rien ne correspond",
+             amorce("Coffrage", "linteaux") == 0)
 
     verifier("un ouvrage et un matériau se rangent à part",
              depot.statistiques()["materiaux"]

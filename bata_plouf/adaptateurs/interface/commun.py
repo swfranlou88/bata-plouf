@@ -6,10 +6,11 @@ from PySide6.QtCore import (
     QAbstractTableModel, QEvent, QItemSelectionModel, QModelIndex, QObject,
     QSortFilterProxyModel, QTimer, Qt,
 )
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (
-    QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QApplication, QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel,
+    QLineEdit, QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
+    QStyleOptionViewItem, QVBoxLayout, QWidget,
 )
 
 from ...domaine import euros
@@ -247,6 +248,74 @@ def champ_entier(valeur: int = 0, maximum: int = 9999) -> QSpinBox:
 # écrivait « SAINT-AMÉ » et « SAINT AME » dans la même base, et personne ne
 # devrait avoir à deviner laquelle des deux a été saisie ce jour-là.
 _SEPARATEURS = str.maketrans("-–—'’./", " " * 7)
+
+
+def plier(texte: str) -> tuple[str, list[int]]:
+    """Le texte sans casse ni accent, et d'où vient chaque caractère.
+
+    Replier « é » en « e » change la longueur de la chaîne : sans garder la
+    position d'origine de chaque caractère, on ne saurait plus dire quelle
+    part du texte affiché a répondu à la recherche, ni jusqu'où surligner.
+    """
+    plie, positions = [], []
+    for rang, caractere in enumerate(texte or ""):
+        decompose = unicodedata.normalize("NFD", caractere.casefold())
+        for lettre in decompose:
+            if not unicodedata.combining(lettre):
+                plie.append(lettre)
+                positions.append(rang)
+    return "".join(plie), positions
+
+
+def amorce(texte: str, cherche: str) -> int:
+    """Combien de caractères de « texte » la recherche couvre, depuis le début.
+
+    Zéro si le texte ne commence pas par ce qu'on cherche. La recherche se
+    fait depuis le début du nom, pas n'importe où dedans : une liste de
+    quatre mille lignes se consulte comme un index, et on doit pouvoir dire
+    d'un coup d'œil pourquoi une fiche est restée.
+    """
+    voulu, _ = plier(cherche)
+    if not voulu:
+        return 0
+    trouve, positions = plier(texte)
+    if not trouve.startswith(voulu):
+        return 0
+    return positions[len(voulu) - 1] + 1
+
+
+class DelegueAmorce(QStyledItemDelegate):
+    """Surligne, dans la cellule, la part qui a répondu à la recherche.
+
+    Sans cela, une liste filtrée ne dit pas pourquoi telle fiche s'y trouve
+    et telle autre non.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.cherche = ""
+
+    def chercher(self, texte: str) -> None:
+        self.cherche = texte or ""
+
+    def paint(self, peintre, option, index) -> None:
+        reglage = QStyleOptionViewItem(option)
+        self.initStyleOption(reglage, index)
+        longueur = amorce(reglage.text, self.cherche)
+        if longueur:
+            cadre = (reglage.widget.style() if reglage.widget
+                     else QApplication.style()).subElementRect(
+                QStyle.SubElement.SE_ItemViewItemText, reglage, reglage.widget)
+            largeur = QFontMetrics(reglage.font).horizontalAdvance(
+                reglage.text[:longueur])
+            teinte = QColor(option.palette.highlight().color())
+            teinte.setAlpha(80 if reglage.state & QStyle.StateFlag.State_Selected
+                            else 110)
+            peintre.save()
+            peintre.fillRect(cadre.left(), cadre.top(), largeur + 2,
+                             cadre.height(), teinte)
+            peintre.restore()
+        super().paint(peintre, option, index)
 
 
 def cle_recherche(valeur) -> str:

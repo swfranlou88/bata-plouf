@@ -20,7 +20,7 @@ from ..impression import RenduDocument
 from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
     barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
-    cle_numero, cle_recherche, confirmer, discret, etiquette_client,
+    DelegueAmorce, amorce, cle_numero, confirmer, discret, etiquette_client,
     informer, liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .vues import VueListe
@@ -271,6 +271,9 @@ class DialogueChoixArticle(QDialog):
         # Le même tri que sur les listings : le maçon qui cherche un article
         # veut pouvoir classer la bibliothèque par prix ou par famille.
         activer_le_tri(self.tableau, self.modele)
+        self.surbrillance = DelegueAmorce(self.tableau)
+        for colonne in (0, 1):  # la référence et la désignation
+            self.tableau.setItemDelegateForColumn(colonne, self.surbrillance)
 
         boutons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -294,16 +297,17 @@ class DialogueChoixArticle(QDialog):
         articles = [a for a in self.depot.articles()
                     if genre == "Tout"
                     or (a.type == "ouvrage") == (genre == "Ouvrages")]
-        # Comme sur les écrans de la bibliothèque : le nom et le code, pas la
-        # famille, que presque toutes les fiches ont en commun.
-        cherche = cle_recherche(self.recherche.text())
+        # Comme sur les écrans de la bibliothèque : le début du nom ou du
+        # code, pas la famille que presque toutes les fiches ont en commun.
+        cherche = self.recherche.text().strip()
         if cherche:
             articles = [a for a in articles
-                        if cherche in cle_recherche(a.designation)
-                        or cherche in cle_recherche(a.reference)]
+                        if amorce(a.designation, cherche)
+                        or amorce(a.reference, cherche)]
         return articles
 
     def rafraichir(self):
+        self.surbrillance.chercher(self.recherche.text().strip())
         retenus = self._retenus()
         self.modele.definir(retenus)
         self.compte.setText(f"{len(retenus)} fiche(s)")

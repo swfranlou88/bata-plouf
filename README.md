@@ -146,6 +146,11 @@ Le bouton **Bibliothèque…** d'un devis ou d'une facture ouvre sur les
 **ouvrages** : une ligne de devis vend une prestation posée, pas un sac de
 ciment. Les matériaux restent à un clic, pour ce qu'on livre sans le poser.
 
+La recherche de la bibliothèque prend le **début** d'un nom ou d'un code,
+pas un mot pris au milieu : quatre mille fiches se consultent comme un
+index. La part qui a répondu est surlignée dans la liste, pour qu'on voie
+pourquoi chaque fiche est restée. Accents ignorés.
+
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.
