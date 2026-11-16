@@ -124,12 +124,17 @@ et traits d'union sont ignorés — l'ancien logiciel écrivait « SAINT-AMÉ »
 
 Les fiches couvrent : pour un **client**, numéro automatique, civilité, nom,
 adresse, deux téléphones, description ; pour un **matériau**, référence
-fournisseur, fournisseur, nom, libellé, unité, prix d'achat et de vente,
-bénéfice et marge calculés ; pour un **devis** ou une **facture**, numéro,
+fournisseur, fournisseur, nom, détail imprimé, notes internes, unité, prix
+d'achat et de vente, bénéfice et marge calculés ; pour un **devis** ou une **facture**, numéro,
 dates, adresses du client et du chantier, lignes détaillées, TVA par taux, HT
 et TTC.
 
 ## Devis et factures
+
+Une fiche de la bibliothèque porte deux textes qu'il ne faut pas confondre :
+le **détail**, imprimé sous la désignation sur le devis du client, et les
+**notes internes** — temps de main d'œuvre, consommations, dates de tarif —
+qui servent à bâtir le prix et ne sortent jamais sur papier.
 
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %

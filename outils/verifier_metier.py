@@ -406,6 +406,28 @@ def main() -> int:
     verifier("la mise en page moderne est intacte",
              "Désignation" in retour and "LIBELLE" not in retour)
 
+    print("\nBibliothèque de prix")
+    # Un ouvrage porte deux choses : ce qu'on en dit au client, et ce qui
+    # sert à en bâtir le prix. La seconde ne doit jamais sortir sur papier.
+    article.detail = "Fourni et posé"
+    article.notes_internes = "Main d'oeuvre 2.930 — ne doit jamais sortir"
+    depot.enregistrer_article(article)
+    relu = depot.article(article.id)
+    verifier("les notes internes se conservent",
+             relu.notes_internes.startswith("Main d'oeuvre"))
+
+    essai = Devis(client_id=client.id, objet="Essai des notes", lignes=[
+        Ligne(designation=relu.designation, detail=relu.detail, quantite=1,
+              unite=relu.unite, prix_unitaire=relu.prix_vente,
+              taux_tva=relu.taux_tva)])
+    papier = html_document(depot, essai)
+    verifier("le détail s'imprime sous la désignation",
+             "Fourni et posé" in papier)
+    verifier("les notes internes ne s'impriment jamais",
+             "ne doit jamais sortir" not in papier)
+    verifier("mais la bibliothèque les retrouve",
+             relu.id in [a.id for a in depot.articles("2.930")])
+
     print("\nRecherche d'un client")
     from bata_plouf.adaptateurs.interface.commun import (
         cle_recherche, etiquette_client,

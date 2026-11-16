@@ -223,7 +223,12 @@ class Article(Archivable):
     id: str = field(default_factory=nouvel_id)
     reference: str = ""
     designation: str = ""
+    # Le détail s'imprime sous la désignation, sur le devis du client ; les
+    # notes ne sortent jamais de la bibliothèque. Les temps de main d'œuvre
+    # et les consommations qui servent à bâtir un prix vont dans les notes :
+    # c'est le métier de l'entreprise, pas une information pour le client.
     detail: str = ""
+    notes_internes: str = ""
     type: str = "matériau"
     fournisseur: str = ""
     famille: str = "Maçonnerie"
@@ -251,7 +256,7 @@ class Article(Archivable):
         t = texte.lower()
         return any(t in (c or "").lower()
                    for c in [self.reference, self.designation, self.detail,
-                             self.famille, self.fournisseur])
+                             self.notes_internes, self.famille, self.fournisseur])
 
 
 @dataclass

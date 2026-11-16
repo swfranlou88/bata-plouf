@@ -173,7 +173,9 @@ class DialogueArticle(DialogueBase):
         self.designation = self.ajouter("Nom", champ_texte(a.designation))
         self.detail = QPlainTextEdit(a.detail)
         self.detail.setMaximumHeight(70)
-        self.ajouter("Libellé", self.detail)
+        self.detail.setPlaceholderText(
+            "Précision imprimée sous la désignation, sur le devis du client")
+        self.ajouter("Détail imprimé", self.detail)
         self.type = self.ajouter("Type", liste_deroulante(TYPES_ARTICLE, a.type))
         familles = sorted(set(FAMILLES) | set(depot.familles()))
         self.famille = liste_deroulante(familles, a.famille)
@@ -186,6 +188,12 @@ class DialogueArticle(DialogueBase):
         self.marge = QLabel()
         self.ajouter("Bénéfice", self.marge)
         self.tva = self.ajouter("TVA", liste_deroulante(TAUX_TVA, a.taux_tva))
+        self.notes = QPlainTextEdit(a.notes_internes)
+        self.notes.setMaximumHeight(70)
+        self.notes.setPlaceholderText(
+            "Temps de main d'œuvre, consommations, dates de tarif — "
+            "jamais imprimé")
+        self.ajouter("Notes internes", self.notes)
 
         self.prix_achat.valueChanged.connect(self._marge)
         self.prix_vente.valueChanged.connect(self._marge)
@@ -207,6 +215,7 @@ class DialogueArticle(DialogueBase):
         a.reference = self.reference.text().strip()
         a.designation = self.designation.text().strip()
         a.detail = self.detail.toPlainText().strip()
+        a.notes_internes = self.notes.toPlainText().strip()
         a.type = self.type.currentText()
         a.fournisseur = self.fournisseur.text().strip()
         a.famille = self.famille.currentText().strip()

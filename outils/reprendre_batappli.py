@@ -341,11 +341,15 @@ def convertir(source: Path, destination: Path) -> dict:
         libelles = lignes_de(e, O.DESIGNATION, 500)
         if not libelles:
             continue
+        # La composition d'un ouvrage dit combien d'heures et de matière il
+        # demande : c'est ce qui sert à en bâtir le prix, et cela n'a rien à
+        # faire sur le devis que lit le client.
         composition = lignes_de(e, O.COMPOSITION, 200)
         depot.enregistrer_article(Article(
             reference=texte(e, O.CODE, 20),
             designation=libelles[0],
-            detail="\n".join(libelles[1:] + composition),
+            detail="\n".join(libelles[1:]),
+            notes_internes="\n".join(composition),
             type="ouvrage", unite=unite(texte(e, O.UNITE, 3)),
             prix_achat=monetaire(e, O.PRIX_ACHAT),
             prix_vente=monetaire(e, O.PRIX_VENTE),
