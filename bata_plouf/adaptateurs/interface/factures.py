@@ -363,6 +363,7 @@ class EditeurFacture(QWidget):
 
         self.outils = barre(
             bouton("+ Ligne", self.ajouter_ligne),
+            bouton("Bibliothèque…", self.inserer_articles),
             bouton("Supprimer la ligne", self.supprimer_ligne),
             "-",
             bouton("Émettre la facture", self.emettre, principal=True),
@@ -474,6 +475,27 @@ class EditeurFacture(QWidget):
         index = self.modele.index(rang, COL_DESIGNATION)
         self.tableau.setCurrentIndex(index)
         self.tableau.edit(index)
+
+    def inserer_articles(self) -> None:
+        """Reprendre des ouvrages de la bibliothèque, comme sur un devis.
+
+        Une facture directe se compose comme un devis : elle n'a pas de
+        marché derrière elle, et ses lignes sortent du même catalogue.
+        """
+        if not self.facture.modifiable:
+            return
+        from ...domaine import Ligne
+        from .devis import DialogueChoixArticle
+        dialogue = DialogueChoixArticle(self, self.depot)
+        if dialogue.exec() != QDialog.DialogCode.Accepted:
+            return
+        rang = None
+        for article in dialogue.articles():
+            rang = self.modele.inserer(Ligne(
+                designation=article.designation, detail=article.detail,
+                unite=article.unite, prix_unitaire=article.prix_vente,
+                taux_tva=article.taux_tva, article_id=article.id,
+                quantite=1.0), rang) + 1
 
     def supprimer_ligne(self) -> None:
         if not self.facture.modifiable:

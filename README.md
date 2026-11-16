@@ -142,6 +142,10 @@ le **détail**, imprimé sous la désignation sur le devis du client, et les
 **notes internes** — temps de main d'œuvre, consommations, dates de tarif —
 qui servent à bâtir le prix et ne sortent jamais sur papier.
 
+Le bouton **Bibliothèque…** d'un devis ou d'une facture ouvre sur les
+**ouvrages** : une ligne de devis vend une prestation posée, pas un sac de
+ciment. Les matériaux restent à un clic, pour ce qu'on livre sans le poser.
+
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.

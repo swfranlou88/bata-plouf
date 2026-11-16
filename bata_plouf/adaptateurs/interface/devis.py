@@ -20,8 +20,8 @@ from ..impression import RenduDocument
 from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
     barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
-    cle_numero, confirmer, discret, informer, etiquette_client,
-    liste_deroulante, rendre_cherchable, titre, valeur_date,
+    cle_numero, cle_recherche, confirmer, discret, etiquette_client,
+    informer, liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .vues import VueListe
 
@@ -227,6 +227,13 @@ class DelegueChoix(QStyledItemDelegate):
 # --- choix dans la bibliothèque de prix -----------------------------------
 
 
+# Ce qu'une ligne de devis vend. Les ouvrages d'abord : sur les 1316 lignes
+# chiffrées reprises de l'ancien logiciel qu'on retrouve en bibliothèque,
+# 1234 sont des ouvrages — une prestation posée, au prix de vente. Les
+# matériaux restent à portée, pour le sable et le ciment qu'on livre.
+FAMILLES_BIBLIOTHEQUE = ["Ouvrages", "Matériaux", "Tout"]
+
+
 class DialogueChoixArticle(QDialog):
     def __init__(self, parent, depot):
         super().__init__(parent)
@@ -234,8 +241,12 @@ class DialogueChoixArticle(QDialog):
         self.setWindowTitle("Insérer depuis la bibliothèque de prix")
         self.resize(760, 460)
 
+        self.genre = liste_deroulante(FAMILLES_BIBLIOTHEQUE)
+        self.genre.currentIndexChanged.connect(self.rafraichir)
+        self.compte = discret("")
+
         self.recherche = QLineEdit()
-        self.recherche.setPlaceholderText("Référence, désignation, famille…")
+        self.recherche.setPlaceholderText("Nom ou code…")
         self.recherche.setClearButtonEnabled(True)
         self.recherche.textChanged.connect(self.rafraichir)
 
@@ -269,14 +280,33 @@ class DialogueChoixArticle(QDialog):
         boutons.rejected.connect(self.reject)
 
         disposition = QVBoxLayout(self)
-        disposition.addWidget(self.recherche)
+        disposition.addWidget(barre(self.genre, self.recherche))
         disposition.addWidget(self.tableau, 1)
-        disposition.addWidget(discret("Astuce : sélection multiple possible avec ⌘ ou ⇧."))
+        disposition.addWidget(barre(
+            discret("Astuce : sélection multiple possible avec ⌘ ou ⇧."),
+            "-", self.compte))
         disposition.addWidget(boutons)
         self.rafraichir()
 
+    def _retenus(self):
+        """Ce que la bibliothèque propose : le genre choisi, puis la recherche."""
+        genre = self.genre.currentText()
+        articles = [a for a in self.depot.articles()
+                    if genre == "Tout"
+                    or (a.type == "ouvrage") == (genre == "Ouvrages")]
+        # Comme sur les écrans de la bibliothèque : le nom et le code, pas la
+        # famille, que presque toutes les fiches ont en commun.
+        cherche = cle_recherche(self.recherche.text())
+        if cherche:
+            articles = [a for a in articles
+                        if cherche in cle_recherche(a.designation)
+                        or cherche in cle_recherche(a.reference)]
+        return articles
+
     def rafraichir(self):
-        self.modele.definir(self.depot.articles(self.recherche.text().strip()))
+        retenus = self._retenus()
+        self.modele.definir(retenus)
+        self.compte.setText(f"{len(retenus)} fiche(s)")
         for index, colonne in enumerate(self.modele.colonnes):
             if colonne.largeur:
                 self.tableau.setColumnWidth(index, colonne.largeur)
