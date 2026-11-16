@@ -287,6 +287,14 @@ def main() -> int:
     # L'import remplace toute la base : il doit rendre exactement ce qu'il a
     # pris, et refuser tout le reste sans rien abîmer.
     from bata_plouf.adaptateurs import archive
+    # Le logo part avec le reste : sans lui, l'en-tête des devis arriverait
+    # nu sur le poste qui reprend l'archive.
+    emblème = atelier / "logo.png"
+    emblème.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\0" * 32)
+    enseigne = depot.societe
+    enseigne.logo = str(emblème)
+    depot.enregistrer_societe(enseigne)
+
     zip_ = archive.ecrire(depot, atelier / "archive")
     inventaire = archive.inspecter(zip_)
     verifier("l'archive s'annonce comme la nôtre",
@@ -307,6 +315,11 @@ def main() -> int:
     verifier("les compteurs de numérotation suivent",
              repris.prochain_numero_facture() == depot.prochain_numero_facture(),
              f"{repris.prochain_numero_facture()} / {depot.prochain_numero_facture()}")
+    verifier("l'archive emporte le logo", archive.inspecter(zip_).logo)
+    verifier("et il est reposé dans le nouveau dossier",
+             Path(repris.societe.logo).is_file()
+             and Path(repris.societe.logo).parent == repris.racine,
+             repris.societe.logo)
 
     # Un zip étranger ne doit pas effleurer la base.
     etranger = atelier / "etranger.zip"
@@ -361,6 +374,23 @@ def main() -> int:
 
     facture_classique = html_document(depot, totale)
     verifier("une facture annonce le reste dû", "RESTE DÛ" in facture_classique)
+
+    # Un devis annonce un acompte, une facture réclame un paiement : les deux
+    # ne se règlent pas avec la même phrase.
+    profil = depot.societe
+    profil.conditions_paiement = "Acompte à la commande."
+    profil.conditions_facture = "Règlement à réception."
+    depot.enregistrer_societe(profil)
+    totale.conditions = ""
+    verifier("la facture prend ses propres conditions",
+             "Règlement à réception" in html_document(depot, totale))
+    simple.conditions = ""
+    verifier("le devis garde les siennes",
+             "Acompte à la commande" in html_document(depot, simple))
+    profil.conditions_facture = ""
+    depot.enregistrer_societe(profil)
+    verifier("et sans les siennes, la facture reprend celles du devis",
+             "Acompte à la commande" in html_document(depot, totale))
 
     # Le fond du tableau est ce que le rendu étire pour atteindre le bas de
     # page ; sans Qt, on vérifie au moins que la commande arrive jusqu'à lui.

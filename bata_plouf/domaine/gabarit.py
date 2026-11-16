@@ -104,7 +104,7 @@ MODELES_PREDEFINIS: dict[str, dict] = {
     "Artisan (classique)": {
         "mise_en_page": "Classique",
         "couleur": "#000000", "police": "Helvetica", "taille_police": 9.0,
-        "logo_a_droite": False, "logo_largeur_mm": 26.0,
+        "logo_a_droite": False, "logo_largeur_mm": 38.0,
         "colonne_unite": True, "colonne_tva": True, "colonne_remise": False,
         "numeroter_lignes": False, "afficher_sous_totaux_sections": False,
         "tableau_pleine_hauteur": True,

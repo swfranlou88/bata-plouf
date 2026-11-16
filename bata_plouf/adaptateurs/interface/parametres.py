@@ -61,6 +61,12 @@ class VueParametres(QWidget):
         self.conditions.setMaximumHeight(70)
         self.mentions = QPlainTextEdit(s.mentions_devis)
         self.mentions.setMaximumHeight(70)
+        self.conditions_f = QPlainTextEdit(s.conditions_facture)
+        self.conditions_f.setMaximumHeight(70)
+        self.conditions_f.setPlaceholderText(
+            "Vide = les mêmes conditions que sur le devis")
+        self.mentions_f = QPlainTextEdit(s.mentions_facture)
+        self.mentions_f.setMaximumHeight(70)
 
         self.journal_ventes = champ_texte(s.journal_ventes, "VE")
         self.compte_client = champ_texte(s.compte_client, "411000")
@@ -130,6 +136,10 @@ class VueParametres(QWidget):
             ("Acompte", self.acompte),
             ("Conditions de règlement", self.conditions),
             ("Mentions", self.mentions),
+        ]))
+        disposition.addWidget(self._groupe("Valeurs par défaut des factures", [
+            ("Conditions de règlement", self.conditions_f),
+            ("Mentions", self.mentions_f),
         ]))
         disposition.addWidget(self._groupe("Comptabilité", [
             ("Journal des ventes", self.journal_ventes),
@@ -248,9 +258,11 @@ class VueParametres(QWidget):
             return
 
         venue = (f" du {inventaire.cree_le[:10]}" if inventaire.cree_le else "")
+        avec_logo = "\net le logo de l'en-tête" if inventaire.logo else ""
         if not confirmer(
                 self, "Remplacer toutes les données",
-                f"L'archive{venue} contient :\n{inventaire.resume()}\n\n"
+                f"L'archive{venue} contient :\n{inventaire.resume()}"
+                f"{avec_logo}\n\n"
                 "Elle remplacera la totalité de vos clients, chantiers, "
                 "matériaux, devis et factures.\n\n"
                 "Une sauvegarde de l'état actuel est faite juste avant, et "
@@ -267,6 +279,8 @@ class VueParametres(QWidget):
         details = [f"{rapport.comptes[c]} {c}" for c in
                    ("clients", "chantiers", "articles", "devis", "factures")]
         message = "Données reprises :\n" + " · ".join(details)
+        if rapport.logo:
+            message += "\nLe logo de l'en-tête a été repris lui aussi."
         if rapport.sauvegarde:
             message += f"\n\nL'état précédent est conservé dans :\n{rapport.sauvegarde}"
         if rapport.ecartes:
@@ -317,7 +331,8 @@ class VueParametres(QWidget):
             acompte_defaut_pct=self.acompte.value(),
             conditions_paiement=self.conditions.toPlainText().strip(),
             mentions_devis=self.mentions.toPlainText().strip(),
-            mentions_facture=self.depot.societe.mentions_facture,
+            conditions_facture=self.conditions_f.toPlainText().strip(),
+            mentions_facture=self.mentions_f.toPlainText().strip(),
             delai_paiement_jours=self.depot.societe.delai_paiement_jours,
             depot_mises_a_jour=self.depot_maj.text().strip(),
             mises_a_jour=self.mode_maj.currentData() or "auto",

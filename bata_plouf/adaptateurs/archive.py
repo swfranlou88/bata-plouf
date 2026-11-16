@@ -41,6 +41,12 @@ DOSSIERS = ("devis", "factures")
 # Sans ces deux-là, il n'y a pas de base à reprendre.
 INDISPENSABLES = ("clients.json",)
 
+# Le logo n'est pas du JSON, mais sans lui l'en-tête des devis arriverait nu
+# sur le nouveau poste. C'est la seule image acceptée, et c'est nous qui la
+# nommons : le nom inscrit dans l'archive ne sert jamais de chemin.
+EXTENSIONS_LOGO = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp")
+NOMS_LOGO = tuple("logo" + extension for extension in EXTENSIONS_LOGO)
+
 # Une archive de données reste petite : la base réelle de l'entreprise, neuf
 # ans d'historique, pèse moins de cinq mégaoctets de JSON. Au-delà de cette
 # borne, on refuse plutôt que de remplir le disque en dépliant.
@@ -60,6 +66,7 @@ class Inventaire:
     cree_le: str = ""
     comptes: dict = field(default_factory=dict)
     retenus: int = 0
+    logo: bool = False
     ecartes: list[str] = field(default_factory=list)
     problemes: list[str] = field(default_factory=list)
 
@@ -81,12 +88,21 @@ class Rapport:
 
     sauvegarde: Path | None
     comptes: dict
+    logo: bool = False
     ecartes: list[str] = field(default_factory=list)
     anomalies: list[str] = field(default_factory=list)
 
 
 def nom_propose() -> str:
     return f"Bata-plouf-{datetime.now():%Y-%m-%d_%Hh%M}.zip"
+
+
+def _logo_de(depot) -> Path | None:
+    """Le fichier du logo, s'il y en a un et qu'il est d'un format connu."""
+    chemin = Path(getattr(depot.societe, "logo", "") or "")
+    if chemin.is_file() and chemin.suffix.lower() in EXTENSIONS_LOGO:
+        return chemin
+    return None
 
 
 def _comptes(depot) -> dict:
@@ -133,6 +149,9 @@ def ecrire(depot, destination: Path | str) -> Path:
             for dossier in DOSSIERS:
                 for fichier in sorted((depot.racine / dossier).glob("*.json")):
                     archive.write(fichier, f"{dossier}/{fichier.name}")
+            logo = _logo_de(depot)
+            if logo is not None:
+                archive.write(logo, "logo" + logo.suffix.lower())
         os.replace(provisoire, destination)
     except OSError:
         Path(provisoire).unlink(missing_ok=True)
@@ -159,7 +178,7 @@ def _membres_acceptes(archive: zipfile.ZipFile) -> tuple[dict, list[str]]:
         morceaux = [m for m in nom.split("/") if m not in ("", ".")]
         if nom.startswith("/") or ".." in morceaux:
             ecartes.append(nom)
-        elif len(morceaux) == 1 and morceaux[0] in FICHIERS_RACINE:
+        elif len(morceaux) == 1 and morceaux[0] in FICHIERS_RACINE + NOMS_LOGO:
             retenus[morceaux[0]] = membre
         elif (len(morceaux) == 2 and morceaux[0] in DOSSIERS
               and morceaux[1].endswith(".json")):
@@ -214,6 +233,9 @@ def inspecter(chemin: Path | str) -> Inventaire:
             # de données : on relit tout maintenant.
             comptes = {"devis": 0, "factures": 0}
             for cle, membre in sorted(retenus.items()):
+                if cle in NOMS_LOGO:
+                    inventaire.logo = True
+                    continue
                 try:
                     contenu = json.loads(archive.read(membre))
                 except (json.JSONDecodeError, UnicodeDecodeError):
@@ -256,7 +278,7 @@ def restaurer(depot, chemin: Path | str) -> Rapport:
         for dossier in DOSSIERS:
             shutil.rmtree(depot.racine / dossier, ignore_errors=True)
             (depot.racine / dossier).mkdir(parents=True, exist_ok=True)
-        for nom in FICHIERS_RACINE:
+        for nom in FICHIERS_RACINE + NOMS_LOGO:
             (depot.racine / nom).unlink(missing_ok=True)
         for cle in retenus:
             shutil.copy2(abri / cle, depot.racine / cle)
@@ -264,5 +286,15 @@ def restaurer(depot, chemin: Path | str) -> Rapport:
         shutil.rmtree(abri, ignore_errors=True)
 
     depot.charger()
+    # Le chemin du logo inscrit dans les paramètres est celui de l'ancien
+    # poste, où il ne mène plus nulle part : on le fait pointer sur la copie
+    # que l'archive vient de déposer.
+    repris = next((c for c in retenus if c in NOMS_LOGO), None)
+    if repris:
+        societe = depot.societe
+        societe.logo = str(depot.racine / repris)
+        depot.enregistrer_societe(societe)
+
     return Rapport(sauvegarde=sauvegarde, comptes=_comptes(depot),
-                   ecartes=inventaire.ecartes, anomalies=list(depot.anomalies))
+                   logo=bool(repris), ecartes=inventaire.ecartes,
+                   anomalies=list(depot.anomalies))

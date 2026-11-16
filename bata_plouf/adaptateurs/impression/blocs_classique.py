@@ -21,8 +21,8 @@ reçoit le contexte et rend du HTML. L'assemblage est dans document.py.
 from decimal import Decimal
 
 from ...domaine import Ligne, date_fr, euros, nombre
-from .blocs import Contexte
-from .styles import echapper, mm_en_px
+from .blocs import Contexte, conditions_par_defaut
+from .styles import echapper, mm_en_px_css
 
 NOIR = "#000000"
 FILET = f"1px solid {NOIR}"
@@ -59,7 +59,7 @@ def entete(ctx: Contexte) -> str:
         from pathlib import Path
         if Path(s.logo).exists():
             logo = (f"<img src='logo' "
-                    f"width='{mm_en_px(g.logo_largeur_mm, ctx.dpi)}'><br>")
+                    f"width='{mm_en_px_css(g.logo_largeur_mm)}'><br>")
 
     identifiants = "<br>".join(
         echapper(texte) for texte in (
@@ -326,7 +326,7 @@ def _mentions(ctx: Contexte) -> str:
     g, d, s = ctx.gabarit, ctx.document, ctx.societe
     morceaux = []
     if g.afficher_conditions:
-        texte = d.conditions or s.conditions_paiement
+        texte = d.conditions or conditions_par_defaut(s, ctx.est_facture)
         if texte:
             morceaux.append(echapper(texte))
     if g.afficher_mentions:

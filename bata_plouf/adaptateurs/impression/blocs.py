@@ -13,7 +13,7 @@ from ...domaine.gabarit import Gabarit
 from ...domaine import (
     Devis, Facture, Ligne, date_fr, euros, nombre, sous_totaux_sections, taux_tva_txt,
 )
-from .styles import Palette, echapper, espace, mm_en_px, palette
+from .styles import Palette, echapper, espace, mm_en_px_css, palette
 
 
 @dataclass
@@ -119,7 +119,8 @@ def entete(ctx: Contexte) -> str:
 
     logo = ""
     if s.logo and Path(s.logo).exists():
-        logo = f"<img src='logo' width='{mm_en_px(ctx.gabarit.logo_largeur_mm, ctx.dpi)}'>"
+        logo = (f"<img src='logo' "
+                f"width='{mm_en_px_css(ctx.gabarit.logo_largeur_mm)}'>")
 
     if ctx.gabarit.logo_a_droite:
         gauche, droite = bloc, logo
@@ -327,6 +328,13 @@ def _rang_prestation(ctx: Contexte, ligne: Ligne, cols: list[ColonneDevis],
     return f"<tr>{cellules}</tr>"
 
 
+def conditions_par_defaut(societe, est_facture: bool) -> str:
+    """Les conditions du profil, celles de la facture si elle en a."""
+    if est_facture and societe.conditions_facture:
+        return societe.conditions_facture
+    return societe.conditions_paiement
+
+
 def conditions_et_recapitulatif(ctx: Contexte) -> str:
     """Conditions de règlement à gauche, récapitulatif chiffré à droite."""
     g, p, d, t = ctx.gabarit, ctx.palette, ctx.document, ctx.totaux
@@ -334,7 +342,7 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
 
     gauche = []
     if g.afficher_conditions:
-        texte = d.conditions or s.conditions_paiement
+        texte = d.conditions or conditions_par_defaut(s, ctx.est_facture)
         if texte:
             gauche.append(f"<b>Conditions de règlement</b><br>{echapper(texte)}")
     if g.afficher_mentions:

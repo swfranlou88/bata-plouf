@@ -107,6 +107,9 @@ class Societe:
         "Acompte à la commande, solde à la fin des travaux. "
         "Paiement par chèque ou virement à réception de facture."
     )
+    # Les conditions propres à la facture : un devis annonce un acompte, une
+    # facture réclame un paiement. Vide, la facture reprend celles du devis.
+    conditions_facture: str = ""
     mentions_devis: str = (
         "Devis gratuit, valable pour la durée indiquée ci-dessus. "
         "Tout travail supplémentaire fera l'objet d'un avenant accepté par le client."

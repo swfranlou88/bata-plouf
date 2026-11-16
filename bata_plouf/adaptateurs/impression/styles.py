@@ -37,6 +37,21 @@ def mm_en_px(mm: float, dpi: int) -> int:
     return int(round(mm / 25.4 * dpi))
 
 
+# Le « pixel » des feuilles de style et des attributs HTML vaut toujours un
+# quatre-vingt-seizième de pouce, quelle que soit la définition de l'appareil.
+PPP_CSS = 96
+
+
+def mm_en_px_css(mm: float) -> int:
+    """Une largeur en millimètres, telle que la comprend le HTML.
+
+    À ne pas confondre avec mm_en_px, qui mesure la feuille : donner à une
+    image sa largeur en points d'imprimante la multiplierait par douze et
+    demi sur une sortie à 1200 ppp.
+    """
+    return mm_en_px(mm, PPP_CSS)
+
+
 def echapper(texte) -> str:
     """Échappe le texte saisi et conserve les retours à la ligne."""
     return _html.escape(str(texte or "")).replace("\n", "<br>")
