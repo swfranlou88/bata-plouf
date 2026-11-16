@@ -15,7 +15,8 @@ from ...domaine import FAMILLES, TYPES_ARTICLE, date_fr, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, ModeleListe, activer_le_tri, alerter, barre,
-    bouton, cle_numero, confirmer, discret, liste_deroulante, titre,
+    bouton, cle_numero, cle_recherche, confirmer, discret, liste_deroulante,
+    titre,
 )
 from .dialogues import DialogueArticle, DialogueChantier, DialogueClient
 
@@ -302,12 +303,17 @@ class VueCatalogue(VueListe):
     nom = "Matériaux"
     mot_element = "article"
     libelle_nouveau = "Nouvel article"
-    indication_recherche = "Référence, désignation, famille…"
+    indication_recherche = "Nom ou référence fournisseur…"
     # Ce que cette liste montre. Ici tout sauf les ouvrages, pour qu'une
     # fiche d'un type inattendu reste visible quelque part plutôt que de
     # disparaître des deux écrans.
     type_cree = "matériau"
     types_filtrables = ["matériau", "main d'œuvre"]
+    # Ce sur quoi porte le champ de recherche, et rien d'autre. La famille
+    # en est exclue : elle a sa propre liste déroulante juste à côté, et
+    # presque toute la bibliothèque porte « Maçonnerie » — taper les trois
+    # premières lettres rendait les mille deux cents fiches.
+    champs_recherche = ("designation", "reference")
 
     def retient(self, article) -> bool:
         return article.type != "ouvrage"
@@ -354,13 +360,21 @@ class VueCatalogue(VueListe):
         famille = self.famille.currentText()
         type_ = self.type.currentText()
         articles = self.depot.articles(
-            recherche=self.recherche.text().strip(),
             famille="" if famille.startswith("Toutes") else famille,
             type_=("" if type_.startswith("Tous") or len(self.types_filtrables) < 2
                    else type_),
             supprimes=self.archives,
         )
-        return [a for a in articles if self.retient(a)]
+        articles = [a for a in articles if self.retient(a)]
+        return [a for a in articles if self.correspond(a)]
+
+    def correspond(self, article) -> bool:
+        """La recherche du bandeau, accents et traits d'union ignorés."""
+        cherche = cle_recherche(self.recherche.text())
+        if not cherche:
+            return True
+        return any(cherche in cle_recherche(getattr(article, champ, ""))
+                   for champ in self.champs_recherche)
 
     def libelle(self, article):
         return article.designation
@@ -425,7 +439,7 @@ class VueOuvrages(VueCatalogue):
     nom = "Ouvrages"
     mot_element = "ouvrage"
     libelle_nouveau = "Nouvel ouvrage"
-    indication_recherche = "Code, désignation, famille…"
+    indication_recherche = "Nom ou code de l'ouvrage…"
     type_cree = "ouvrage"
     types_filtrables = ["ouvrage"]
 

@@ -428,6 +428,24 @@ def main() -> int:
     verifier("mais la bibliothèque les retrouve",
              relu.id in [a.id for a in depot.articles("2.930")])
 
+    # Le bandeau des écrans Matériaux et Ouvrages, lui, ne cherche que sur
+    # le nom et le code : la famille a sa propre liste déroulante, et
+    # presque toute la bibliothèque porte la même.
+    from bata_plouf.adaptateurs.interface.vues import VueCatalogue
+    cherche = VueCatalogue.correspond
+    class Bandeau:
+        champs_recherche = VueCatalogue.champs_recherche
+        def __init__(self, texte):
+            self.recherche = type("Champ", (), {"text": lambda _: texte})()
+    relu.designation, relu.famille = "Carrelage posé", "Maçonnerie"
+    relu.reference = "XX"
+    verifier("le nom trouve la fiche", cherche(Bandeau("carrelage"), relu))
+    verifier("le code aussi", cherche(Bandeau("xx"), relu))
+    verifier("l'accent ne gêne pas", cherche(Bandeau("posé"), relu)
+             and cherche(Bandeau("pose"), relu))
+    verifier("mais la famille ne répond plus",
+             not cherche(Bandeau("maçonnerie"), relu))
+
     verifier("un ouvrage et un matériau se rangent à part",
              depot.statistiques()["materiaux"]
              + depot.statistiques()["ouvrages"]
