@@ -25,8 +25,8 @@ from ...domaine import (
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, barre, bouton, champ_date, champ_entier,
-    champ_texte, cle_numero, confirmer, discret, informer, liste_deroulante,
-    titre, valeur_date,
+    champ_texte, cle_numero, confirmer, discret, informer, etiquette_client,
+    liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TVA, COL_UNITE,
@@ -263,8 +263,9 @@ class EditeurFacture(QWidget):
         self.numero = QLabel(facture.numero or "attribué à l'enregistrement")
         self.type = QLabel(facture.libelle_type)
         self.origine = QLabel("—")
-        self.client = QComboBox()
-        self.chantier = QComboBox()
+        # Huit cents fiches : on tape trois lettres plutôt que de dérouler.
+        self.client = rendre_cherchable(QComboBox(), "Nom, société ou ville…")
+        self.chantier = rendre_cherchable(QComboBox(), "Chantier…")
         self.adresse_chantier = champ_texte(
             facture.adresse_chantier,
             "adresse des travaux, si aucune fiche chantier")
@@ -408,7 +409,7 @@ class EditeurFacture(QWidget):
         self.client.clear()
         self.client.addItem("— aucun —", "")
         for client in self.depot.clients():
-            self.client.addItem(client.libelle, client.id)
+            self.client.addItem(etiquette_client(client), client.id)
         self.client.setCurrentIndex(max(0, self.client.findData(self.facture.client_id)))
         self.client.blockSignals(False)
         self._changer_client()

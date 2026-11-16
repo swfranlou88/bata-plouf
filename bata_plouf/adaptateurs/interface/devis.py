@@ -20,8 +20,8 @@ from ..impression import RenduDocument
 from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
     barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
-    cle_numero, confirmer, discret, informer, liste_deroulante, titre,
-    valeur_date,
+    cle_numero, confirmer, discret, informer, etiquette_client,
+    liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .vues import VueListe
 
@@ -301,8 +301,9 @@ class EditeurDevis(QWidget):
         self.depot = depot
         self.devis = devis
 
-        self.client = QComboBox()
-        self.chantier = QComboBox()
+        # Huit cents fiches : on tape trois lettres plutôt que de dérouler.
+        self.client = rendre_cherchable(QComboBox(), "Nom, société ou ville…")
+        self.chantier = rendre_cherchable(QComboBox(), "Chantier…")
         self.adresse_chantier = champ_texte(
             devis.adresse_chantier,
             "adresse des travaux, si aucune fiche chantier")
@@ -443,7 +444,7 @@ class EditeurDevis(QWidget):
         self.client.clear()
         self.client.addItem("— aucun —", "")
         for client in self.depot.clients():
-            self.client.addItem(client.libelle, client.id)
+            self.client.addItem(etiquette_client(client), client.id)
         index = self.client.findData(self.devis.client_id)
         self.client.setCurrentIndex(max(0, index))
         self.client.blockSignals(False)

@@ -10,8 +10,8 @@ from ...domaine import (
     TYPES_ARTICLE, UNITES, euros,
 )
 from .commun import (
-    bouton, champ_date, champ_euros, champ_texte, liste_deroulante,
-    valeur_date,
+    bouton, champ_date, champ_euros, champ_texte, etiquette_client,
+    liste_deroulante, rendre_cherchable, valeur_date,
 )
 
 
@@ -114,9 +114,10 @@ class DialogueChantier(DialogueBase):
         self.chantier = chantier or Chantier(client_id=client_id)
         ch = self.chantier
 
-        self.client = liste_deroulante([], None)
+        self.client = rendre_cherchable(liste_deroulante([], None),
+                                        "Nom, société ou ville…")
         for cl in depot.clients():
-            self.client.addItem(cl.libelle, cl.id)
+            self.client.addItem(etiquette_client(cl), cl.id)
         index = self.client.findData(ch.client_id)
         if index >= 0:
             self.client.setCurrentIndex(index)

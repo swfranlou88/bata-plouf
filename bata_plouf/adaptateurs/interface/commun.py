@@ -3,12 +3,13 @@
 import unicodedata
 
 from PySide6.QtCore import (
-    QAbstractTableModel, QItemSelectionModel, QModelIndex, Qt,
+    QAbstractTableModel, QEvent, QItemSelectionModel, QModelIndex, QObject,
+    QSortFilterProxyModel, QTimer, Qt,
 )
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
-    QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-    QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from ...domaine import euros
@@ -240,6 +241,108 @@ def champ_entier(valeur: int = 0, maximum: int = 9999) -> QSpinBox:
     boite.setRange(0, maximum)
     boite.setValue(int(valeur or 0))
     return boite
+
+
+# Traits d'union, apostrophes et points valent espace : l'ancien logiciel
+# écrivait « SAINT-AMÉ » et « SAINT AME » dans la même base, et personne ne
+# devrait avoir à deviner laquelle des deux a été saisie ce jour-là.
+_SEPARATEURS = str.maketrans("-–—'’./", " " * 7)
+
+
+def cle_recherche(valeur) -> str:
+    """Clé de comparaison d'une recherche : sans casse, accent ni ponctuation."""
+    return " ".join(cle_texte(valeur).translate(_SEPARATEURS).split())
+
+
+class _ContientSansAccent(QSortFilterProxyModel):
+    """Ne garde que les lignes où le texte cherché apparaît, accents ignorés.
+
+    Qt sait filtrer par début de mot ; ici on cherche n'importe où, et
+    « ame » doit trouver « SAINT-AMÉ » comme « SAINT AME » — l'ancien
+    logiciel saisissait les villes tantôt avec accent, tantôt sans.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._cherche = ""
+
+    def chercher(self, texte: str) -> None:
+        self._cherche = cle_recherche(texte)
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, rang: int, parent) -> bool:
+        if not self._cherche:
+            return True
+        source = self.sourceModel()
+        if source is None:
+            return True
+        return self._cherche in cle_recherche(
+            source.index(rang, 0, parent).data())
+
+
+class _SelectionAuFocus(QObject):
+    """Entrer dans le champ sélectionne le nom qui s'y trouve.
+
+    Sans cela, les lettres tapées s'ajouteraient au nom déjà présent et la
+    recherche ne trouverait rien. Le choix est différé d'un tour de boucle :
+    au moment du clic, Qt n'a pas encore posé le curseur.
+    """
+
+    def eventFilter(self, objet, evenement):
+        if evenement.type() == QEvent.Type.FocusIn:
+            QTimer.singleShot(0, objet.selectAll)
+        return False
+
+
+def rendre_cherchable(boite: QComboBox, invite: str = "Taper pour filtrer…") -> QComboBox:
+    """Rend une liste déroulante filtrable au clavier.
+
+    Huit cents clients ne se parcourent pas à la molette : on tape trois
+    lettres et la liste se réduit. Le texte saisi ne crée jamais d'entrée —
+    il ne sert qu'à chercher, et ce qu'on retient reste une fiche de la
+    liste ; une recherche abandonnée remet le nom de la fiche en place.
+    """
+    boite.setEditable(True)
+    boite.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+    boite.lineEdit().setPlaceholderText(invite)
+    boite._selection = _SelectionAuFocus(boite)
+    boite.lineEdit().installEventFilter(boite._selection)
+
+    filtre = _ContientSansAccent(boite)
+    filtre.setSourceModel(boite.model())
+
+    completeur = QCompleter(filtre, boite)
+    # C'est notre filtre qui trie les lignes ; celui de Qt ne doit pas
+    # repasser derrière avec sa correspondance par le début.
+    completeur.setCompletionMode(
+        QCompleter.CompletionMode.UnfilteredPopupCompletion)
+    completeur.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+    boite.setCompleter(completeur)
+
+    def choisir(index) -> None:
+        # Deux fiches peuvent porter le même nom : on remonte jusqu'à la
+        # ligne d'origine plutôt que de rechercher le texte dans la liste.
+        rang = filtre.mapToSource(
+            completeur.completionModel().mapToSource(index)).row()
+        if rang >= 0:
+            boite.setCurrentIndex(rang)
+
+    completeur.activated[QModelIndex].connect(choisir)
+    boite.lineEdit().textEdited.connect(filtre.chercher)
+    boite.lineEdit().editingFinished.connect(
+        lambda: boite.setEditText(boite.itemText(boite.currentIndex())))
+    return boite
+
+
+def etiquette_client(client) -> str:
+    """« M. Léo MOUGEL — SAINT-AMÉ ».
+
+    La ville ne tient pas de la décoration : sur huit cents fiches, deux
+    homonymes ne se distinguent que par elle, et c'est aussi sur elle qu'on
+    retrouve un client dont on a oublié le nom.
+    """
+    ville = (getattr(client, "ville", "") or "").strip()
+    return f"{client.libelle} — {ville}" if ville else client.libelle
 
 
 def liste_deroulante(valeurs, selection="") -> QComboBox:

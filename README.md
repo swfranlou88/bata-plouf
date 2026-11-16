@@ -117,6 +117,11 @@ L'accueil présente cinq catégories — clients, devis, matériaux, factures,
 chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie ouvre une
 liste avec création, modification et suppression.
 
+Sur un devis ou une facture, le client se cherche au clavier : on tape trois
+lettres du nom, de la société ou de la ville et la liste se réduit. Accents
+et traits d'union sont ignorés — l'ancien logiciel écrivait « SAINT-AMÉ » et
+« SAINT AME » dans la même base.
+
 Les fiches couvrent : pour un **client**, numéro automatique, civilité, nom,
 adresse, deux téléphones, description ; pour un **matériau**, référence
 fournisseur, fournisseur, nom, libellé, unité, prix d'achat et de vente,

@@ -406,6 +406,23 @@ def main() -> int:
     verifier("la mise en page moderne est intacte",
              "Désignation" in retour and "LIBELLE" not in retour)
 
+    print("\nRecherche d'un client")
+    from bata_plouf.adaptateurs.interface.commun import (
+        cle_recherche, etiquette_client,
+    )
+    verifier("la ville distingue deux homonymes",
+             etiquette_client(Client(nom="Mougel", ville="SAINT AME"))
+             != etiquette_client(Client(nom="Mougel", ville="LE SYNDICAT")))
+    verifier("une fiche sans ville garde son seul nom",
+             "—" not in etiquette_client(Client(nom="Mougel")))
+    verifier("l'accent ne change rien",
+             cle_recherche("SAINT-AMÉ") == cle_recherche("SAINT-AME"))
+    verifier("le trait d'union non plus",
+             cle_recherche("SAINT-AMÉ") == cle_recherche("saint ame"),
+             cle_recherche("SAINT-AMÉ"))
+    verifier("et la recherche porte sur n'importe quel morceau",
+             cle_recherche("ame") in cle_recherche("M. Léo MOUGEL — SAINT-AMÉ"))
+
     print("\nFormats et import")
     verifier("montant français", euros(1234.5) == "1 234,50 €", euros(1234.5))
     verifier("date française", date_fr("2026-10-25") == "25/10/2026")
