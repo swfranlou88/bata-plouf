@@ -160,8 +160,9 @@ code journal se règlent dans les Paramètres.
 
 ## Modèle du devis
 
-Écran **Modèle du devis**, avec aperçu en direct : couleur, police, titre,
-logo, colonnes du tableau, blocs affichés, pied de page, marges. Six modèles
+Écran **Modèle du devis**, avec aperçu en direct — zoomable au Ctrl + molette
+ou aux boutons — : couleur, police, titre, logo, colonnes du tableau, blocs
+affichés, pied de page, marges. Six modèles
 de départ. Une seule couleur est demandée — les fonds en sont dérivés et la
 couleur du texte posé dessus est calculée pour rester lisible.
 

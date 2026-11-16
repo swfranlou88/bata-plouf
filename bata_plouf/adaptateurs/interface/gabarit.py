@@ -4,7 +4,7 @@ import tempfile
 from dataclasses import fields
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtPdf import QPdfDocument
 from PySide6.QtWidgets import (
@@ -18,6 +18,13 @@ from ...domaine.gabarit import (
 from ..impression import RenduDocument
 from ...domaine import Client, Devis, Ligne, Societe, depuis_dict, en_dict
 from .commun import barre, bouton, confirmer, discret, informer, liste_deroulante, titre
+
+# De combien un clic sur « + » agrandit l'aperçu, et jusqu'où. La borne
+# haute n'est pas un caprice : l'image est rendue à la taille demandée, et
+# une page A4 à quatre fois la largeur de l'écran pèse en mémoire.
+PAS_ZOOM = 1.25
+ZOOM_MINIMAL, ZOOM_MAXIMAL = 0.4, 3.0
+LARGEUR_MAXIMALE = 2400
 
 
 class ApercuDepot:
@@ -130,6 +137,8 @@ class VueGabarit(QWidget):
         self.widgets: dict[str, QWidget] = {}
         self._page = 0
         self._total_pages = 1
+        # 1 = la page occupe la largeur disponible ; au-delà, on défile.
+        self._zoom = 1.0
         self._dossier = Path(tempfile.mkdtemp(prefix="apercu-devis-"))
 
         self._minuteur = QTimer(self)
@@ -284,18 +293,28 @@ class VueGabarit(QWidget):
         self.defilement_apercu.setWidgetResizable(True)
         self.defilement_apercu.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.defilement_apercu.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        # Ctrl + molette agrandit, comme partout ailleurs.
+        self.defilement_apercu.viewport().installEventFilter(self)
 
         self.bouton_precedent = bouton("‹", lambda: self._changer_page(-1))
         self.bouton_suivant = bouton("›", lambda: self._changer_page(1))
-        for b in (self.bouton_precedent, self.bouton_suivant):
+        self.bouton_moins = bouton("−", lambda: self._changer_zoom(1 / PAS_ZOOM))
+        self.bouton_plus = bouton("+", lambda: self._changer_zoom(PAS_ZOOM))
+        for b in (self.bouton_precedent, self.bouton_suivant,
+                  self.bouton_moins, self.bouton_plus):
             b.setFixedWidth(34)
+        self.bouton_moins.setToolTip("Réduire (Ctrl + molette)")
+        self.bouton_plus.setToolTip("Agrandir (Ctrl + molette)")
+        self.etat_zoom = discret("100 %")
+        self.etat_zoom.setMinimumWidth(48)
 
         colonne_apercu = QVBoxLayout()
         colonne_apercu.setSpacing(8)
         colonne_apercu.addWidget(barre(
             QLabel("Aperçu"), "-", self.bouton_precedent, self.etat_pages,
-            self.bouton_suivant))
+            self.bouton_suivant, "-", self.bouton_moins, self.etat_zoom,
+            self.bouton_plus, bouton("Ajuster", self._ajuster)))
         colonne_apercu.addWidget(self.defilement_apercu, 1)
 
         cadre_apercu = QWidget()
@@ -405,6 +424,24 @@ class VueGabarit(QWidget):
         self._page = max(0, min(self._total_pages - 1, self._page + pas))
         self.rafraichir_apercu()
 
+    def _changer_zoom(self, facteur: float) -> None:
+        self._zoom = max(ZOOM_MINIMAL, min(ZOOM_MAXIMAL, self._zoom * facteur))
+        self.rafraichir_apercu()
+
+    def _ajuster(self) -> None:
+        """Revenir à la page entière, dans la largeur disponible."""
+        self._zoom = 1.0
+        self.rafraichir_apercu()
+
+    def eventFilter(self, objet, evenement):
+        if (evenement.type() == QEvent.Type.Wheel
+                and evenement.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            delta = evenement.angleDelta().y()
+            if delta:
+                self._changer_zoom(PAS_ZOOM if delta > 0 else 1 / PAS_ZOOM)
+            return True
+        return super().eventFilter(objet, evenement)
+
     def rafraichir_apercu(self) -> None:
         depot, devis = devis_exemple(self.depot)
         rendu = RenduDocument(ApercuDepot(depot, self.gabarit_courant()), devis)
@@ -419,15 +456,28 @@ class VueGabarit(QWidget):
         except Exception as erreur:  # un réglage incohérent ne doit pas tout bloquer
             self.apercu.setText(f"Aperçu indisponible : {erreur}")
             return
-        self.apercu.setPixmap(QPixmap.fromImage(image))
+        vignette = QPixmap.fromImage(image)
+        self.apercu.setPixmap(vignette)
+        # Sans taille minimale, la zone défilante rabote l'image au lieu de
+        # faire apparaître ses barres de défilement.
+        self.apercu.setMinimumSize(vignette.width() + 28, vignette.height() + 28)
         self.etat_pages.setText(f"page {self._page + 1} / {self._total_pages}")
+        self.etat_zoom.setText(f"{self._zoom * 100:.0f} %")
         self.bouton_precedent.setEnabled(self._page > 0)
         self.bouton_suivant.setEnabled(self._page < self._total_pages - 1)
+        self.bouton_moins.setEnabled(self._zoom > ZOOM_MINIMAL + 0.001)
+        self.bouton_plus.setEnabled(self._zoom < ZOOM_MAXIMAL - 0.001)
 
     def _taille_apercu(self) -> QSize:
-        """Une page A4 à la largeur réellement disponible, sans déborder."""
-        disponible = self.defilement_apercu.viewport().width() - 34
-        largeur = max(360, min(1100, disponible))
+        """Une page A4 à la largeur disponible, multipliée par le zoom.
+
+        La largeur de référence est celle du cadre, pas celle de sa zone
+        visible : une barre de défilement qui apparaît rétrécirait la seconde,
+        donc l'image, donc la barre — et l'aperçu se mettrait à osciller.
+        """
+        disponible = self.defilement_apercu.width() - 34
+        largeur = max(360, min(1100, disponible)) * self._zoom
+        largeur = max(240, min(LARGEUR_MAXIMALE, largeur))
         return QSize(int(largeur), int(largeur * 297 / 210))
 
     def resizeEvent(self, evenement):
