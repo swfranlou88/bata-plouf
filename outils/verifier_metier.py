@@ -10,6 +10,7 @@ déséquilibré sont des fautes qu'on ne rattrape pas après coup.
 
 import sys
 import tempfile
+import zipfile
 from decimal import Decimal
 from pathlib import Path
 
@@ -277,6 +278,58 @@ def main() -> int:
     verifier("les totaux survivent à l'aller-retour",
              relu.un_devis(devis.id).totaux().total_ht == totaux.total_ht)
     verifier("les factures aussi", len(relu.factures()) == len(depot.factures()))
+
+    print("\nArchive zip")
+    # L'import remplace toute la base : il doit rendre exactement ce qu'il a
+    # pris, et refuser tout le reste sans rien abîmer.
+    from bata_plouf.adaptateurs import archive
+    zip_ = archive.ecrire(depot, atelier / "archive")
+    inventaire = archive.inspecter(zip_)
+    verifier("l'archive s'annonce comme la nôtre",
+             inventaire.exploitable and inventaire.version != "",
+             str(inventaire.problemes or inventaire.version))
+    verifier("elle annonce le bon nombre de pièces",
+             inventaire.comptes.get("factures") == len(depot.factures()),
+             str(inventaire.comptes))
+
+    repris = DepotFichiers(atelier / "repris")
+    repris.charger()
+    archive.restaurer(repris, zip_)
+    verifier("l'import rend les mêmes clients",
+             [c.id for c in repris.clients()] == [c.id for c in depot.clients()])
+    verifier("et les mêmes factures, au centime",
+             [(f.numero, f.totaux().total_ttc) for f in repris.factures()]
+             == [(f.numero, f.totaux().total_ttc) for f in depot.factures()])
+    verifier("les compteurs de numérotation suivent",
+             repris.prochain_numero_facture() == depot.prochain_numero_facture(),
+             f"{repris.prochain_numero_facture()} / {depot.prochain_numero_facture()}")
+
+    # Un zip étranger ne doit pas effleurer la base.
+    etranger = atelier / "etranger.zip"
+    with zipfile.ZipFile(etranger, "w") as z:
+        z.writestr("photo.jpg", b"\xff\xd8\xff")
+    temoin = [c.id for c in repris.clients()]
+    try:
+        archive.restaurer(repris, etranger)
+        verifier("un zip étranger est refusé", False)
+    except archive.ErreurArchive:
+        verifier("un zip étranger est refusé", True)
+    verifier("et la base n'a pas bougé",
+             [c.id for c in repris.clients()] == temoin)
+
+    # Un nom de fichier qui cherche à sortir du dossier est écarté.
+    evasion = atelier / "evasion.zip"
+    with zipfile.ZipFile(zip_) as source, zipfile.ZipFile(evasion, "w") as cible:
+        for membre in source.infolist():
+            cible.writestr(membre, source.read(membre))
+        cible.writestr("../../PIRATE.json", "[]")
+    verifier("un chemin d'évasion est écarté",
+             archive.inspecter(evasion).ecartes == ["../../PIRATE.json"],
+             str(archive.inspecter(evasion).ecartes))
+    archive.restaurer(repris, evasion)
+    verifier("et rien ne s'écrit hors du dossier de données",
+             not list(atelier.glob("PIRATE*.json"))
+             and not list(atelier.parent.glob("PIRATE*.json")))
 
     print("\nFormats et import")
     verifier("montant français", euros(1234.5) == "1 234,50 €", euros(1234.5))

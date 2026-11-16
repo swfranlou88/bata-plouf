@@ -10,9 +10,10 @@ from PySide6.QtWidgets import (
 
 from ...domaine import TAUX_TVA, Societe
 from .commun import (
-    alerter, barre, bouton, champ_entier, champ_pourcent, champ_texte, discret,
-    informer, liste_deroulante, titre,
+    alerter, barre, bouton, champ_entier, champ_pourcent, champ_texte, confirmer,
+    discret, informer, liste_deroulante, titre,
 )
+from ...adaptateurs import archive
 from ...adaptateurs.systeme import ouvrir_dossier
 from .comptabilite import DialogueExportComptable
 from .mise_a_jour import DialogueMiseAJour
@@ -149,6 +150,9 @@ class VueParametres(QWidget):
             ("", barre(bouton("Ouvrir le dossier", self._ouvrir_dossier),
                        bouton("Sauvegarder maintenant", self._sauvegarder),
                        bouton("Exporter une copie…", self._exporter), "-")),
+            ("Archive zip", barre(
+                bouton("Exporter en zip…", self._exporter_zip),
+                bouton("Importer un zip…", self._importer_zip), "-")),
             ("Ancien logiciel", barre(
                 bouton("Reprendre les données de Batappli…", self._importer), "-")),
         ]))
@@ -208,6 +212,73 @@ class VueParametres(QWidget):
             alerter(self, "Export impossible", str(erreur))
             return
         informer(self, "Copie effectuée", f"Vos données ont été copiées dans :\n{cible}")
+
+    def _exporter_zip(self) -> None:
+        chemin, _ = QFileDialog.getSaveFileName(
+            self, "Enregistrer l'archive des données",
+            str(Path.home() / archive.nom_propose()), "Archive zip (*.zip)")
+        if not chemin:
+            return
+        try:
+            cible = archive.ecrire(self.depot, Path(chemin))
+        except OSError as erreur:
+            alerter(self, "Export impossible", str(erreur))
+            return
+        poids = cible.stat().st_size / 1024
+        informer(self, "Archive créée",
+                 f"Toutes vos données tiennent dans :\n{cible}\n\n"
+                 f"{poids:.0f} Ko. Les devis imprimés en PDF n'y sont pas : "
+                 "le logiciel sait les refaire à partir des données.")
+
+    def _importer_zip(self) -> None:
+        chemin, _ = QFileDialog.getOpenFileName(
+            self, "Quelle archive reprendre ?", str(Path.home()),
+            "Archive zip (*.zip)")
+        if not chemin:
+            return
+
+        # On regarde ce que contient l'archive avant de proposer quoi que ce
+        # soit : l'import remplace toute la base, et l'utilisateur doit
+        # savoir ce qu'il met à la place.
+        inventaire = archive.inspecter(Path(chemin))
+        if not inventaire.exploitable:
+            alerter(self, "Archive inutilisable",
+                    "\n".join(inventaire.problemes)
+                    + "\n\nVos données n'ont pas été touchées.")
+            return
+
+        venue = (f" du {inventaire.cree_le[:10]}" if inventaire.cree_le else "")
+        if not confirmer(
+                self, "Remplacer toutes les données",
+                f"L'archive{venue} contient :\n{inventaire.resume()}\n\n"
+                "Elle remplacera la totalité de vos clients, chantiers, "
+                "matériaux, devis et factures.\n\n"
+                "Une sauvegarde de l'état actuel est faite juste avant, et "
+                "reste récupérable depuis le dossier de données. Continuer ?"):
+            return
+
+        try:
+            rapport = archive.restaurer(self.depot, Path(chemin))
+        except (archive.ErreurArchive, OSError) as erreur:
+            alerter(self, "Import interrompu",
+                    f"{erreur}\n\nVos données n'ont pas été remplacées.")
+            return
+
+        details = [f"{rapport.comptes[c]} {c}" for c in
+                   ("clients", "chantiers", "articles", "devis", "factures")]
+        message = "Données reprises :\n" + " · ".join(details)
+        if rapport.sauvegarde:
+            message += f"\n\nL'état précédent est conservé dans :\n{rapport.sauvegarde}"
+        if rapport.ecartes:
+            message += (f"\n\n{len(rapport.ecartes)} fichier(s) de l'archive "
+                        "ont été laissés de côté : ils ne font pas partie des "
+                        "données du logiciel.")
+        if rapport.anomalies:
+            message += "\n\nÀ vérifier :\n" + "\n".join(
+                f"· {a}" for a in rapport.anomalies[:8])
+        informer(self, "Import terminé", message)
+        self.rafraichir()
+        self.donnees_modifiees.emit()
 
     def _chercher_maj(self) -> None:
         DialogueMiseAJour(self, self.depot_maj.text().strip()).exec()

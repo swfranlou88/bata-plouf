@@ -140,6 +140,9 @@ class DepotFichiers:
     # --- chargement ------------------------------------------------------
 
     def charger(self) -> None:
+        # Le relevé repart de zéro : un rechargement — après un import, par
+        # exemple — ne doit pas traîner les anomalies du précédent.
+        self.anomalies = []
         self.migration = self._reprendre_ancien_dossier()
         for dossier in (self.racine, self.d_devis, self.d_factures, self.d_pdf,
                         self.d_sauvegardes):
@@ -197,9 +200,11 @@ class DepotFichiers:
         return ""
 
     def _verifier_coherence(self) -> None:
-        """Signale les références cassées sans rien supprimer."""
-        self.anomalies = [a for a in self.anomalies
-                          if a.startswith(("Devis illisible", "Facture illisible"))]
+        """Signale les références cassées sans rien supprimer.
+
+        Les fichiers illisibles relevés par le chargement en cours sont déjà
+        dans la liste : on complète, on ne remet pas à zéro.
+        """
         for devis in self._devis.values():
             if devis.supprime:
                 continue

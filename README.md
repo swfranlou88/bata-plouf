@@ -64,6 +64,12 @@ horodaté à chaque ouverture dans `sauvegardes/`.
 Ce dossier se copie tel quel sur une clé USB. Il vit **en dehors** de
 l'application : reconstruire ou remplacer le `.app` n'y touche pas.
 
+Paramètres → **Exporter en zip** met toute la base dans un seul fichier, PDF
+exclus : neuf ans d'historique tiennent en 600 Ko. **Importer un zip** la
+remet en place, mais remplace tout : le logiciel annonce d'abord ce que
+contient l'archive, sauvegarde l'existant, et refuse une archive dont un
+fichier ne se relit pas plutôt que de laisser une base à moitié reprise.
+
 Faute de transactions, deux précautions tiennent la fiabilité : toute écriture
 passe par un fichier temporaire puis un renommage atomique, et chaque devis a
 son propre fichier.
