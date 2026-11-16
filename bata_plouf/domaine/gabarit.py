@@ -9,8 +9,18 @@ l'apparence d'un devis sans jamais toucher aux calculs.
 from dataclasses import dataclass, field
 
 
+# Les deux mises en page possibles. « Moderne » est celle d'origine : blocs
+# colorés, encadré du client, récapitulatif à droite. « Classique » reproduit
+# le devis d'artisan tel que l'imprimait BatAppli : en-tête à trois colonnes,
+# objet souligné au centre, tableau encadré qui descend jusqu'au bas de page.
+MISES_EN_PAGE = ["Moderne", "Classique"]
+
+
 @dataclass
 class Gabarit:
+    # --- mise en page ---
+    mise_en_page: str = "Moderne"
+
     # --- couleur et typographie ---
     # Une seule couleur d'accent : les fonds de bloc et de section en sont
     # dérivés, et la couleur du texte posé dessus est calculée pour rester
@@ -25,6 +35,10 @@ class Gabarit:
     logo_largeur_mm: float = 38.0
     logo_a_droite: bool = True
     afficher_bloc_chantier: bool = True
+    # Propres à la mise en page classique : les métiers annoncés au centre de
+    # l'en-tête, et la qualité imprimée sous le nom de l'entreprise.
+    entete_activite: str = ""
+    entete_qualite: str = ""
 
     # --- textes libres ---
     texte_introduction: str = ""
@@ -37,6 +51,10 @@ class Gabarit:
     numeroter_lignes: bool = False
     afficher_detail_lignes: bool = True
     afficher_sous_totaux_sections: bool = True
+    # Classique : le cadre du tableau descend jusqu'au bas de la page, même
+    # quand le devis tient en trois lignes. Rien ne peut y être ajouté après
+    # coup sans que cela se voie.
+    tableau_pleine_hauteur: bool = True
 
     # --- blocs de bas de page ---
     afficher_recap_tva: bool = True
@@ -66,14 +84,34 @@ class Gabarit:
     def marges(self) -> tuple[float, float, float, float]:
         return (self.marge_gauche, self.marge_haute, self.marge_droite, self.marge_basse)
 
+    @property
+    def classique(self) -> bool:
+        """Tolérante : un réglage inconnu retombe sur la mise en page moderne."""
+        return str(self.mise_en_page or "").strip().lower().startswith("classiq")
+
 
 # --- modèles tout faits, pour démarrer sans tout régler -------------------
 
 MODELES_PREDEFINIS: dict[str, dict] = {
-    "Classique": {
+    "Sobre": {
+        "mise_en_page": "Moderne",
         "couleur": "#333333", "police": "Helvetica", "taille_police": 9.5,
         "colonne_remise": False, "numeroter_lignes": False,
         "marge_gauche": 14.0, "marge_haute": 12.0, "marge_droite": 14.0, "marge_basse": 16.0,
+    },
+    # Le devis d'artisan tel qu'on l'imprimait avant : en-tête à trois
+    # colonnes, tableau encadré, totaux dans un cadre en bas à droite.
+    "Artisan (classique)": {
+        "mise_en_page": "Classique",
+        "couleur": "#000000", "police": "Helvetica", "taille_police": 9.0,
+        "logo_a_droite": False, "logo_largeur_mm": 26.0,
+        "colonne_unite": True, "colonne_tva": True, "colonne_remise": False,
+        "numeroter_lignes": False, "afficher_sous_totaux_sections": False,
+        "tableau_pleine_hauteur": True,
+        "afficher_signature": False, "afficher_pied": False,
+        "afficher_recapitulatif_marche": False,
+        "marge_gauche": 12.0, "marge_haute": 10.0,
+        "marge_droite": 12.0, "marge_basse": 10.0,
     },
     "Bleu bâtiment": {
         "couleur": "#1f4e79", "police": "Helvetica", "taille_police": 9.5,

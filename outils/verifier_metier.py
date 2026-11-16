@@ -41,6 +41,10 @@ def main() -> int:
         ecritures_ventes, equilibre, periode_annee, recapitulatif_tva,
     )
     from bata_plouf.adaptateurs.impression import html_document
+    from bata_plouf.adaptateurs.impression.blocs import Contexte
+    from bata_plouf.adaptateurs.impression.document import corps_html
+    from bata_plouf.domaine.gabarit import Gabarit, MODELES_PREDEFINIS
+    from bata_plouf.domaine.entites import depuis_dict, en_dict
     from bata_plouf.domaine.facturation import (
         acomptes_a_absorber, etat_avancement, generer_acompte, generer_avoir,
         generer_facture_totale, generer_situation, generer_solde,
@@ -330,6 +334,47 @@ def main() -> int:
     verifier("et rien ne s'écrit hors du dossier de données",
              not list(atelier.glob("PIRATE*.json"))
              and not list(atelier.parent.glob("PIRATE*.json")))
+
+    print("\nMise en page classique")
+    moderne = depot.gabarit
+    verifier("le modèle d'origine reste le moderne", not moderne.classique,
+             moderne.mise_en_page)
+
+    reglages = en_dict(Gabarit())
+    reglages.update(MODELES_PREDEFINIS["Artisan (classique)"])
+    reglages["entete_activite"] = "Travaux Divers\nMaçonnerie"
+    reglages["entete_qualite"] = "Artisan Maçon"
+    artisan = depuis_dict(Gabarit, reglages)
+    verifier("le modèle Artisan bascule en classique", artisan.classique)
+
+    depot.enregistrer_gabarit(artisan)
+    page = html_document(depot, simple)
+    verifier("les métiers sont annoncés dans l'en-tête",
+             "Travaux Divers" in page and "Artisan Maçon" in page)
+    verifier("l'objet est repris en capitales",
+             (simple.objet or "").upper() in page or not simple.objet)
+    verifier("les colonnes portent les intitulés de la maison",
+             all(mot in page for mot in ("LIBELLE", "QTE", "P.U.", "TOTAL EU")))
+    verifier("le cadre des totaux est chiffré",
+             "TOTAL HT" in page and "TOTAL TTC" in page)
+    verifier("l'adresse du client est imprimée", "Cambon" in page)
+
+    facture_classique = html_document(depot, totale)
+    verifier("une facture annonce le reste dû", "RESTE DÛ" in facture_classique)
+
+    # Le fond du tableau est ce que le rendu étire pour atteindre le bas de
+    # page ; sans Qt, on vérifie au moins que la commande arrive jusqu'à lui.
+    etire = corps_html(Contexte(depot=depot, document=simple, gabarit=artisan,
+                                remplissage_px=400))
+    verifier("le fond du tableau se laisse étirer",
+             "padding-bottom:400px" in etire)
+    verifier("et ne l'est pas sans qu'on le demande",
+             "padding-bottom:0px" in html_document(depot, simple))
+
+    depot.enregistrer_gabarit(moderne)
+    retour = html_document(depot, simple)
+    verifier("la mise en page moderne est intacte",
+             "Désignation" in retour and "LIBELLE" not in retour)
 
     print("\nFormats et import")
     verifier("montant français", euros(1234.5) == "1 234,50 €", euros(1234.5))

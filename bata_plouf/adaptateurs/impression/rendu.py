@@ -1,5 +1,6 @@
 """Pagination, pied de page répété, export PDF et impression."""
 
+import math
 from pathlib import Path
 
 from PySide6.QtCore import QMarginsF, QRectF, QSizeF, Qt, QUrl
@@ -15,6 +16,9 @@ from .styles import mm_en_px, palette
 
 NOIR = QColor("#000000")
 HAUTEUR_PIED_MM = 13.0
+# De quoi ne pas frôler le bas de page en étirant le tableau : une page qui
+# déborde d'un millimètre en fait naître une seconde, vide.
+RESPIRATION_MM = 6.0
 
 
 class RenduDocument:
@@ -58,11 +62,47 @@ class RenduDocument:
                 doc.addResource(QTextDocument.ResourceType.ImageResource,
                                 QUrl("logo"), image)
 
-        ctx = Contexte(depot=self.depot, document=self.document,
-                       gabarit=self.gabarit, dpi=dpi)
-        doc.setHtml(corps_html(ctx))
+        def html(remplissage: int = 0) -> str:
+            return corps_html(Contexte(
+                depot=self.depot, document=self.document, gabarit=self.gabarit,
+                dpi=dpi, remplissage_px=remplissage))
+
+        doc.setHtml(html())
+        self._etirer_tableau(doc, corps, dpi, html)
         doc.setPageSize(QSizeF(corps.width(), corps.height()))
         return doc, zone, corps
+
+    def _etirer_tableau(self, doc: QTextDocument, corps: QRectF, dpi: int,
+                        html) -> None:
+        """Fait descendre le cadre du tableau jusqu'au bas de la page.
+
+        Qt rend exactement la hauteur demandée en remplissage : une mesure de
+        la hauteur naturelle suffit donc à calculer ce qui manque, et la
+        seconde mise en page tombe juste. On vérifie quand même qu'aucune page
+        n'est née de l'opération, et on renonce si c'est le cas — un devis
+        correct vaut mieux qu'un beau cadre suivi d'une page blanche.
+        """
+        if not (self.gabarit.classique and self.gabarit.tableau_pleine_hauteur):
+            return
+        page = corps.height()
+        if page <= 0:
+            return
+
+        doc.setTextWidth(corps.width())
+        hauteur = doc.size().height()
+        pages = max(1, math.ceil((hauteur - 1) / page))
+        manque = pages * page - mm_en_px(RESPIRATION_MM, dpi) - hauteur
+        if manque < 4:
+            return
+
+        # Le « px » des feuilles de style vaut toujours 1/96 de pouce, quelle
+        # que soit la définition de l'imprimante : sur une sortie à 1200 ppp,
+        # demander la hauteur en points de l'appareil la multiplierait par
+        # douze et demi, et ferait naître une dizaine de pages vides.
+        doc.setHtml(html(int(manque * 96.0 / dpi)))
+        doc.setPageSize(QSizeF(corps.width(), page))
+        if doc.pageCount() > pages:
+            doc.setHtml(html())
 
     # --- pied de page ----------------------------------------------------
 

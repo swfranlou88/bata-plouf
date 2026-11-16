@@ -24,6 +24,9 @@ class Contexte:
     document: object          # Devis ou Facture
     gabarit: Gabarit
     dpi: int = 96
+    # Hauteur ajoutée au fond du tableau pour que son cadre atteigne le bas
+    # de la page ; calculée par le rendu, qui seul connaît la place restante.
+    remplissage_px: int = 0
     palette: Palette = field(init=False)
 
     def __post_init__(self):

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...domaine.gabarit import (
-    COULEURS_SUGGEREES, Gabarit, MODELES_PREDEFINIS, POLICES,
+    COULEURS_SUGGEREES, Gabarit, MISES_EN_PAGE, MODELES_PREDEFINIS, POLICES,
 )
 from ..impression import RenduDocument
 from ...domaine import Client, Devis, Ligne, Societe, depuis_dict, en_dict
@@ -196,6 +196,8 @@ class VueGabarit(QWidget):
         pile.addWidget(self._groupe("Modèle de départ", [
             ("Modèle", barre(self.modele_predefini,
                              bouton("Appliquer", self._appliquer_modele))),
+            ("Mise en page",
+             self._suivre("mise_en_page", liste_deroulante(MISES_EN_PAGE))),
         ]))
 
         pile.addWidget(self._groupe("Couleur et texte", [
@@ -205,10 +207,17 @@ class VueGabarit(QWidget):
             ("Titre du document", self._suivre("titre_document", QLineEdit())),
         ]))
 
+        self.activite = self._suivre("entete_activite", QPlainTextEdit())
+        self.activite.setMaximumHeight(60)
+        self.activite.setPlaceholderText(
+            "Mise en page classique : les métiers annoncés au centre, "
+            "une ligne chacun")
         pile.addWidget(self._groupe("En-tête", [
             ("Largeur du logo", self._mesure("logo_largeur_mm", 90, " mm", 2)),
             self._case("logo_a_droite", "Logo à droite (sinon à gauche)"),
             self._case("afficher_bloc_chantier", "Rappeler l'adresse du chantier"),
+            ("Métiers", self.activite),
+            ("Qualité", self._suivre("entete_qualite", QLineEdit())),
         ]))
 
         pile.addWidget(self._groupe("Colonnes du tableau", [
@@ -218,6 +227,8 @@ class VueGabarit(QWidget):
             self._case("colonne_remise", "Colonne Remise"),
             self._case("afficher_detail_lignes", "Afficher le détail sous chaque ligne"),
             self._case("afficher_sous_totaux_sections", "Sous-total par section"),
+            self._case("tableau_pleine_hauteur",
+                       "Cadre jusqu'au bas de la page (mise en page classique)"),
         ]))
 
         self.introduction = self._suivre("texte_introduction", QPlainTextEdit())

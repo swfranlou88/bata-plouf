@@ -3,7 +3,8 @@
     gabarit.py (hors paquet)  les réglages choisis par l'utilisateur
     styles.py                 couleurs dérivées, mesures, échappement
     blocs.py                  un bloc du document = une fonction
-    document.py               l'ordre des blocs
+    blocs_classique.py        les mêmes, en devis d'artisan
+    document.py               l'ordre des blocs, et le choix entre les deux
     rendu.py                  pagination, pied de page, PDF, impression
 """
 

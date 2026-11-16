@@ -155,9 +155,19 @@ code journal se règlent dans les Paramètres.
 ## Modèle du devis
 
 Écran **Modèle du devis**, avec aperçu en direct : couleur, police, titre,
-logo, colonnes du tableau, blocs affichés, pied de page, marges. Cinq modèles
+logo, colonnes du tableau, blocs affichés, pied de page, marges. Six modèles
 de départ. Une seule couleur est demandée — les fonds en sont dérivés et la
 couleur du texte posé dessus est calculée pour rester lisible.
+
+Deux mises en page, au choix. **Moderne** : blocs colorés, encadré du client,
+récapitulatif à droite. **Classique** (modèle « Artisan ») : le devis
+d'artisan, en-tête à trois colonnes — logo et identifiants, métiers, nom et
+qualité —, objet souligné au centre, tableau encadré dont les filets
+descendent jusqu'au bas de la page, et les totaux dans un cadre en bas à
+droite. Pas de couleur : ces documents partent sur une laser noir et blanc, où
+un aplat devient un gris qui mange le texte. Le cadre qui descend jusqu'en bas
+n'est pas qu'une habitude — il empêche qu'on ajoute une ligne après signature
+sans que cela se voie.
 
 Pour changer la structure même des documents : `impression/blocs.py` (un bloc =
 une fonction) et `impression/document.py` (leur ordre).
