@@ -25,8 +25,8 @@ from ...domaine import (
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, barre, bouton, champ_date, champ_entier,
-    champ_texte, confirmer, discret, informer, liste_deroulante, titre,
-    valeur_date,
+    champ_texte, cle_numero, confirmer, discret, informer, liste_deroulante,
+    titre, valeur_date,
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TVA, COL_UNITE,
@@ -675,18 +675,19 @@ class VueFactures(VueListe):
 
     def colonnes(self):
         return [
-            Colonne("Numéro", lambda f: f.numero, largeur=110, gras=True),
+            Colonne("Numéro", lambda f: f.numero, largeur=110, gras=True,
+                    cle=lambda f: cle_numero(f.numero)),
             Colonne("Date", lambda f: date_fr(f.date_facture), largeur=92,
-                    alignement=CENTRE),
+                    alignement=CENTRE, cle=lambda f: f.date_facture or ""),
             Colonne("Type", lambda f: LIBELLES_FACTURE.get(f.type, f.type), largeur=145),
             Colonne("Client", lambda f: self.depot.nom_client(f.client_id), largeur=175),
             Colonne("Objet", lambda f: f.objet),
             Colonne("Total HT", lambda f: euros(f.totaux().total_ht), largeur=110,
-                    alignement=DROITE),
+                    alignement=DROITE, cle=lambda f: f.totaux().total_ht),
             Colonne("TTC", lambda f: euros(f.totaux().total_ttc), largeur=110,
-                    alignement=DROITE),
+                    alignement=DROITE, cle=lambda f: f.totaux().total_ttc),
             Colonne("Échéance", lambda f: date_fr(f.date_echeance), largeur=92,
-                    alignement=CENTRE),
+                    alignement=CENTRE, cle=lambda f: f.date_echeance or ""),
             Colonne("Statut", lambda f: ("en retard" if f.en_retard else f.statut),
                     largeur=90, alignement=CENTRE),
         ]

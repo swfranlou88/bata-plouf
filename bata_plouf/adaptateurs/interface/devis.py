@@ -18,9 +18,10 @@ from ...domaine import (
 )
 from ..impression import RenduDocument
 from .commun import (
-    CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, alerter, barre, bouton,
-    champ_date, champ_entier, champ_pourcent, champ_texte, confirmer, discret,
-    informer, liste_deroulante, titre, valeur_date,
+    CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
+    barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
+    cle_numero, confirmer, discret, informer, liste_deroulante, titre,
+    valeur_date,
 )
 from .vues import VueListe
 
@@ -243,8 +244,10 @@ class DialogueChoixArticle(QDialog):
             Colonne("Désignation", lambda a: a.designation, gras=True),
             Colonne("Famille", lambda a: a.famille, largeur=130),
             Colonne("Un.", lambda a: a.unite, largeur=55, alignement=CENTRE),
-            Colonne("Vente", lambda a: euros(a.prix_vente), largeur=100, alignement=DROITE),
-            Colonne("TVA", lambda a: f"{nombre(a.taux_tva)} %", largeur=65, alignement=CENTRE),
+            Colonne("Vente", lambda a: euros(a.prix_vente), largeur=100,
+                    alignement=DROITE, cle=lambda a: a.prix_vente or 0.0),
+            Colonne("TVA", lambda a: f"{nombre(a.taux_tva)} %", largeur=65,
+                    alignement=CENTRE, cle=lambda a: a.taux_tva or 0.0),
         ])
         self.tableau = QTableView()
         self.tableau.setModel(self.modele)
@@ -254,6 +257,9 @@ class DialogueChoixArticle(QDialog):
         self.tableau.setAlternatingRowColors(True)
         self.tableau.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tableau.doubleClicked.connect(self.accept)
+        # Le même tri que sur les listings : le maçon qui cherche un article
+        # veut pouvoir classer la bibliothèque par prix ou par famille.
+        activer_le_tri(self.tableau, self.modele)
 
         boutons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -633,16 +639,23 @@ class VueDevis(VueListe):
 
     def colonnes(self):
         return [
-            Colonne("Numéro", lambda d: d.numero, largeur=110, gras=True),
-            Colonne("Date", lambda d: date_fr(d.date_devis), largeur=95, alignement=CENTRE),
+            Colonne("Numéro", lambda d: d.numero, largeur=110, gras=True,
+                    cle=lambda d: cle_numero(d.numero)),
+            Colonne("Date", lambda d: date_fr(d.date_devis), largeur=95,
+                    alignement=CENTRE, cle=lambda d: d.date_devis or ""),
             Colonne("Client", lambda d: self.depot.nom_client(d.client_id), largeur=200),
             Colonne("Objet", lambda d: d.objet or self.depot.nom_chantier(d.chantier_id)),
             Colonne("Total HT", lambda d: euros(d.totaux().total_ht),
-                    largeur=115, alignement=DROITE),
+                    largeur=115, alignement=DROITE,
+                    cle=lambda d: d.totaux().total_ht),
             Colonne("TTC", lambda d: euros(d.totaux().total_ttc),
-                    largeur=115, alignement=DROITE),
+                    largeur=115, alignement=DROITE,
+                    cle=lambda d: d.totaux().total_ttc),
             Colonne("Statut", lambda d: d.statut, largeur=95, alignement=CENTRE),
-            Colonne("Facturé", self._facture, largeur=80, alignement=CENTRE),
+            # Les devis sans facture affichent un tiret : on les groupe avant
+            # ceux qui sont entamés, plutôt que de comparer « — » à un taux.
+            Colonne("Facturé", self._facture, largeur=80, alignement=CENTRE,
+                    cle=self._cle_facture),
         ]
 
     def _facture(self, devis) -> str:
@@ -650,6 +663,12 @@ class VueDevis(VueListe):
         if not self.depot.factures(devis_id=devis.id):
             return "—"
         return f"{nombre(avancement_facture(self.depot, devis))} %"
+
+    def _cle_facture(self, devis) -> tuple:
+        from ...domaine.facturation import avancement_facture
+        if not self.depot.factures(devis_id=devis.id):
+            return (0, 0.0)
+        return (1, float(avancement_facture(self.depot, devis)))
 
     def charger(self):
         statut = self.statut.currentText()

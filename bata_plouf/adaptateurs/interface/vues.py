@@ -5,7 +5,7 @@ Toutes les listes partagent le même socle : une recherche, des filtres propres
 regarde les fiches actives ou la corbeille.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QDialog, QHeaderView, QLineEdit, QTableView,
     QVBoxLayout, QWidget,
@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
 from ...domaine import FAMILLES, TYPES_ARTICLE, date_fr, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
-    CENTRE, Colonne, DROITE, ModeleListe, alerter, barre, bouton, confirmer,
-    discret, liste_deroulante, titre,
+    CENTRE, Colonne, DROITE, ModeleListe, activer_le_tri, alerter, barre,
+    bouton, cle_numero, confirmer, discret, liste_deroulante, titre,
 )
 from .dialogues import DialogueArticle, DialogueChantier, DialogueClient
 
@@ -59,6 +59,8 @@ class VueListe(QWidget):
         self.tableau.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tableau.doubleClicked.connect(lambda _: self.modifier())
         self.tableau.verticalHeader().setDefaultSectionSize(26)
+
+        self._trier_par = activer_le_tri(self.tableau, self.modele)
 
         disposition = QVBoxLayout(self)
         disposition.setContentsMargins(16, 14, 16, 14)
@@ -198,13 +200,15 @@ class VueClients(VueListe):
 
     def colonnes(self):
         return [
-            Colonne("N°", lambda c: c.numero, largeur=70),
+            Colonne("N°", lambda c: c.numero, largeur=70,
+                    cle=lambda c: cle_numero(c.numero)),
             Colonne("Client", lambda c: c.libelle, gras=True),
             Colonne("Ville", lambda c: f"{c.cp} {c.ville}".strip(), largeur=170),
             Colonne("Téléphone", lambda c: c.mobile or c.telephone, largeur=130),
             Colonne("Courriel", lambda c: c.email, largeur=210),
             Colonne("Devis", lambda c: str(len(self.depot.devis(client_id=c.id))),
-                    largeur=60, alignement=CENTRE),
+                    largeur=60, alignement=CENTRE,
+                    cle=lambda c: len(self.depot.devis(client_id=c.id))),
         ]
 
     def charger(self):
@@ -247,12 +251,15 @@ class VueChantiers(VueListe):
             Colonne("Chantier", lambda c: c.libelle, gras=True),
             Colonne("Client", lambda c: self.depot.nom_client(c.client_id), largeur=200),
             Colonne("Ville", lambda c: f"{c.cp} {c.ville}".strip(), largeur=160),
+            # La date au format ISO se trie toute seule, dans le bon ordre.
             Colonne("Début", lambda c: date_fr(c.date_debut), largeur=95,
-                    alignement=CENTRE),
+                    alignement=CENTRE, cle=lambda c: c.date_debut or ""),
             Colonne("Statut", lambda c: c.statut, largeur=95, alignement=CENTRE),
             Colonne("Devis", lambda c: str(sum(1 for d in self.depot.devis()
                                                if d.chantier_id == c.id)),
-                    largeur=60, alignement=CENTRE),
+                    largeur=60, alignement=CENTRE,
+                    cle=lambda c: sum(1 for d in self.depot.devis()
+                                      if d.chantier_id == c.id)),
         ]
 
     def charger(self):
@@ -316,15 +323,18 @@ class VueCatalogue(VueListe):
             Colonne("Famille", lambda a: a.famille, largeur=120),
             Colonne("Un.", lambda a: a.unite, largeur=55, alignement=CENTRE),
             Colonne("Achat", lambda a: euros(a.prix_achat), largeur=95,
-                    alignement=DROITE),
+                    alignement=DROITE, cle=lambda a: a.prix_achat or 0.0),
             Colonne("Vente", lambda a: euros(a.prix_vente), largeur=95,
-                    alignement=DROITE),
+                    alignement=DROITE, cle=lambda a: a.prix_vente or 0.0),
             Colonne("Bénéfice", lambda a: euros(a.benefice), largeur=95,
-                    alignement=DROITE),
+                    alignement=DROITE, cle=lambda a: a.benefice),
+            # Le tiret des articles sans prix d'achat ne se compare pas à un
+            # pourcentage : on les range à part, avant les marges connues.
             Colonne("Marge", lambda a: f"{nombre(a.marge_pct, 1)} %" if a.prix_achat
-                    else "—", largeur=70, alignement=DROITE),
+                    else "—", largeur=70, alignement=DROITE,
+                    cle=lambda a: (1, a.marge_pct) if a.prix_achat else (0, 0.0)),
             Colonne("TVA", lambda a: f"{nombre(a.taux_tva)} %", largeur=65,
-                    alignement=CENTRE),
+                    alignement=CENTRE, cle=lambda a: a.taux_tva or 0.0),
         ]
 
     def charger(self):
