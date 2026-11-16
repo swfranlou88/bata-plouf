@@ -70,6 +70,20 @@ def entete(ctx: Contexte) -> str:
         ) if texte
     )
 
+    # L'assurance décennale est obligatoire sur un devis de bâtiment, et la
+    # mise en page classique n'a pas de pied de page pour la porter. Elle
+    # prend donc la place qu'elle occupait sur le papier à en-tête :
+    # au-dessus du dessin, dans la colonne de gauche.
+    decennale = ""
+    if s.assurance_nom:
+        contrat = f" n° {s.assurance_contrat}" if s.assurance_contrat else ""
+        lignes = [f"Assurance de responsabilité décennale{contrat}",
+                  s.assurance_nom]
+        if s.assurance_couverture:
+            lignes.append(f"Garantie accordée sur les chantiers exécutés en "
+                          f"{s.assurance_couverture}.")
+        decennale = "<br>".join(echapper(x) for x in lignes) + "<br><br>"
+
     metiers = "<br>".join(
         echapper(ligne.strip()) for ligne in (g.entete_activite or "").split("\n")
         if ligne.strip()
@@ -107,7 +121,7 @@ def entete(ctx: Contexte) -> str:
     return (
         "<table width='100%' cellspacing='0' cellpadding='0'><tr>"
         f"<td width='23%' valign='top' style='font-size:{petit:.1f}pt;'>"
-        f"{logo}{identifiants}</td>"
+        f"{decennale}{logo}{identifiants}</td>"
         f"<td width='2%'></td>"
         f"<td width='75%' valign='top'>{bandeau}</td>"
         "</tr></table>"
