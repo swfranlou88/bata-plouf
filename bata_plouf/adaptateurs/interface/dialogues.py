@@ -1,17 +1,18 @@
 """Fiches de saisie : client, chantier, article de la bibliothèque de prix."""
 
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QHeaderView, QLabel,
     QPlainTextEdit, QTableView, QVBoxLayout, QWidget,
 )
 
 from ...domaine import (
-    Article, Chantier, Client, FAMILLES, STATUTS_CHANTIER, TAUX_TVA,
-    TYPES_ARTICLE, UNITES, euros, nombre,
+    Article, Chantier, Client, Composant, FAMILLES, STATUTS_CHANTIER,
+    TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre,
 )
 from ...domaine.chantier import est_du_temps
 from .commun import (
-    CENTRE, Colonne, DROITE, ModeleListe, bouton, champ_date, champ_euros,
+    CENTRE, DROITE, GAUCHE, barre, bouton, champ_date, champ_euros,
     champ_texte, discret, etiquette_client, infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, valeur_date,
 )
@@ -19,6 +20,81 @@ from .commun import (
 # La marge de la maison, appliquée au prix d'achat pour proposer le prix de
 # vente. Vingt-cinq pour cent du prix d'achat, comme l'affiche la fiche.
 MARGE_PAR_DEFAUT = 0.25
+
+
+class ModeleComposants(QAbstractTableModel):
+    """La composition d'un ouvrage, quantités modifiables.
+
+    Seule la quantité se tape : le nom et l'unité viennent de la fiche du
+    matériau, et les retoucher ici ferait diverger deux écritures du même
+    article.
+    """
+
+    EN_TETES = ["Pour une unité", "Quantité", "Un."]
+
+    def __init__(self, lignes=None):
+        super().__init__()
+        self.lignes: list = list(lignes or [])
+
+    def rowCount(self, parent=QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self.lignes)
+
+    def columnCount(self, parent=QModelIndex()) -> int:
+        return 0 if parent.isValid() else 3
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if (orientation == Qt.Orientation.Horizontal
+                and role == Qt.ItemDataRole.DisplayRole):
+            return self.EN_TETES[section]
+        return None
+
+    def flags(self, index):
+        base = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        if index.column() == 1:
+            return base | Qt.ItemFlag.ItemIsEditable
+        return base
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+        composant = self.lignes[index.row()]
+        if role == Qt.ItemDataRole.EditRole and index.column() == 1:
+            return composant.quantite
+        if role == Qt.ItemDataRole.DisplayRole:
+            if index.column() == 0:
+                return composant.designation
+            if index.column() == 1:
+                return nombre(composant.quantite, 3)
+            return composant.unite
+        if role == Qt.ItemDataRole.TextAlignmentRole:
+            if index.column() == 1:
+                return DROITE
+            return CENTRE if index.column() == 2 else GAUCHE
+        return None
+
+    def setData(self, index, valeur, role=Qt.ItemDataRole.EditRole):
+        if role != Qt.ItemDataRole.EditRole or index.column() != 1:
+            return False
+        try:
+            self.lignes[index.row()].quantite = round(float(valeur), 4)
+        except (TypeError, ValueError):
+            return False
+        self.dataChanged.emit(index, index)
+        return True
+
+    def ajouter(self, composant) -> None:
+        rang = len(self.lignes)
+        self.beginInsertRows(QModelIndex(), rang, rang)
+        self.lignes.append(composant)
+        self.endInsertRows()
+
+    def retirer(self, rangs) -> None:
+        if not rangs:
+            return
+        self.beginResetModel()
+        self.lignes = [c for rang, c in enumerate(self.lignes)
+                       if rang not in set(rangs)]
+        self.endResetModel()
 
 
 class DialogueBase(QDialog):
@@ -218,56 +294,89 @@ class DialogueArticle(DialogueBase):
         """Ce dont l'ouvrage est fait, par unité : matière et heures.
 
         C'est la table qui bâtit le prix de vente et qui fait, sur un
-        chantier, la liste de ce qu'il faut emmener. Elle se lit ici ; elle
-        se modifie encore dans l'ancien logiciel, pas dans celui-ci.
+        chantier, la liste de ce qu'il faut emmener. Elle se modifie ici :
+        une quantité se tape dans la colonne, un matériau s'ajoute depuis la
+        bibliothèque.
         """
         cadre = QWidget()
         dedans = QVBoxLayout(cadre)
         dedans.setContentsMargins(0, 0, 0, 0)
         dedans.setSpacing(4)
 
-        if not article.composants:
-            dedans.addWidget(discret(
-                "Aucune composition connue : le chantier ne saura dire ni le "
-                "temps ni la matière de cet ouvrage."))
-            return cadre
-
-        modele = ModeleListe([
-            Colonne("Pour une unité", lambda c: c.designation),
-            Colonne("Quantité", lambda c: nombre(c.quantite, 3), largeur=85,
-                    alignement=DROITE, cle=lambda c: c.quantite),
-            Colonne("Un.", lambda c: c.unite, largeur=50, alignement=CENTRE),
-        ], list(article.composants))
-        tableau = QTableView()
-        tableau.setModel(modele)
-        tableau.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
-        tableau.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
-        tableau.verticalHeader().setVisible(False)
-        tableau.verticalHeader().setDefaultSectionSize(22)
-        tableau.setAlternatingRowColors(True)
-        tableau.setMaximumHeight(150)
-        entetes = tableau.horizontalHeader()
+        self.composants = ModeleComposants(list(article.composants))
+        self.table_composants = QTableView()
+        self.table_composants.setModel(self.composants)
+        self.table_composants.setSelectionBehavior(
+            QTableView.SelectionBehavior.SelectRows)
+        self.table_composants.verticalHeader().setVisible(False)
+        self.table_composants.verticalHeader().setDefaultSectionSize(22)
+        self.table_composants.setAlternatingRowColors(True)
+        self.table_composants.setMinimumHeight(120)
+        self.table_composants.setMaximumHeight(170)
+        entetes = self.table_composants.horizontalHeader()
         entetes.setStretchLastSection(False)
-        for rang, colonne in enumerate(modele.colonnes):
-            if colonne.largeur:
+        for rang, largeur in ((0, None), (1, 85), (2, 50)):
+            if largeur:
                 entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Fixed)
-                tableau.setColumnWidth(rang, colonne.largeur)
+                self.table_composants.setColumnWidth(rang, largeur)
             else:
                 entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Stretch)
-        infobulles_si_tronque(tableau)
-        dedans.addWidget(tableau)
+        infobulles_si_tronque(self.table_composants)
+        dedans.addWidget(self.table_composants)
 
-        heures = sum(c.quantite for c in article.composants
-                     if est_du_temps(c.unite))
-        matiere = sum(1 for c in article.composants if not est_du_temps(c.unite))
-        dedans.addWidget(discret(
-            f"{nombre(heures, 3)} heure(s) et {matiere} matériau(x) "
-            f"par {article.unite or 'unité'}."))
+        self.resume_composition = discret("")
+        dedans.addWidget(barre(
+            bouton("Ajouter…", self._ajouter_composant),
+            bouton("Retirer", self._retirer_composant),
+            "-", self.resume_composition))
+        self.composants.dataChanged.connect(lambda *_: self._resumer())
+        self.composants.modelReset.connect(self._resumer)
+        self._resumer()
         # Sans ce ressort, le formulaire étire la composition sur toute la
-        # hauteur restante et le total se retrouve à dix centimètres du
-        # tableau qu'il résume.
+        # hauteur restante et le résumé se retrouve loin du tableau.
         dedans.addStretch(1)
         return cadre
+
+    def _ajouter_composant(self) -> None:
+        """Prendre dans la bibliothèque de quoi composer l'ouvrage."""
+        # Importé ici : l'écran des devis connaît déjà cette fiche, et le
+        # chemin inverse ferait un cercle.
+        from .devis import DialogueChoixArticle
+
+        dialogue = DialogueChoixArticle(self, self.depot, "Matériaux")
+        if dialogue.exec() != QDialog.DialogCode.Accepted:
+            return
+        for article in dialogue.articles():
+            if article.id == self.article.id:
+                continue  # un ouvrage ne se compose pas de lui-même
+            self.composants.ajouter(Composant(
+                article_id=article.id, quantite=1.0,
+                designation=article.designation, unite=article.unite))
+        self._resumer()
+
+    def _retirer_composant(self) -> None:
+        rangs = {i.row() for i in
+                 self.table_composants.selectionModel().selectedRows()}
+        self.composants.retirer(rangs)
+        self._resumer()
+
+    def _resumer(self) -> None:
+        """Ce que la composition dit du prix, à côté de ce qui est saisi."""
+        heures = sum(c.quantite for c in self.composants.lignes
+                     if est_du_temps(c.unite))
+        matiere = sum(1 for c in self.composants.lignes
+                      if not est_du_temps(c.unite))
+        total = 0.0
+        for composant in self.composants.lignes:
+            fiche = self.depot.article(composant.article_id)
+            if fiche is not None:
+                total += (composant.quantite or 0.0) * (fiche.prix_vente or 0.0)
+        unite = self.unite.currentText() or "unité"
+        # Court : la fiche n'est pas large, et ce résumé se lit d'un coup
+        # d'œil pour comparer au prix de vente saisi juste au-dessus.
+        self.resume_composition.setText(
+            f"{nombre(heures, 3)} h · {matiere} matériaux · "
+            f"{euros(total)} / {unite}")
 
     def _suivre_achat(self, achat: float) -> None:
         """Le prix de vente suit l'achat, à la marge de la maison.
@@ -302,4 +411,6 @@ class DialogueArticle(DialogueBase):
         a.prix_achat = self.prix_achat.value()
         a.prix_vente = self.prix_vente.value()
         a.taux_tva = float(self.tva.currentData())
+        if hasattr(self, "composants"):
+            a.composants = list(self.composants.lignes)
         return a

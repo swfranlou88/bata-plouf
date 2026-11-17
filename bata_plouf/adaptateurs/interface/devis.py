@@ -299,13 +299,17 @@ FAMILLES_BIBLIOTHEQUE = ["Ouvrages", "Matériaux", "Tout"]
 
 
 class DialogueChoixArticle(QDialog):
-    def __init__(self, parent, depot):
+    def __init__(self, parent, depot, genre: str = ""):
         super().__init__(parent)
         self.depot = depot
         self.setWindowTitle("Insérer depuis la bibliothèque de prix")
         self.resize(760, 460)
 
-        self.genre = liste_deroulante(FAMILLES_BIBLIOTHEQUE)
+        # Sur quoi la bibliothèque s'ouvre : les ouvrages pour un devis, les
+        # matériaux pour composer un ouvrage.
+        self.genre = liste_deroulante(FAMILLES_BIBLIOTHEQUE,
+                                      genre if genre in FAMILLES_BIBLIOTHEQUE
+                                      else FAMILLES_BIBLIOTHEQUE[0])
         self.genre.currentIndexChanged.connect(self.rafraichir)
         self.compte = discret("")
 

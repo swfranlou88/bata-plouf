@@ -131,8 +131,10 @@ mène du devis à son chantier et du chantier à son devis.
 
 Un ouvrage porte sa **composition** : ce qu'il consomme par unité, matière et
 heures — « un mètre carré de bouchage en agglos, c'est un bloc creux, un
-demi-sac de ciment, 0,03 m³ de sable et 2,93 heures ». Elle se lit sur la
-fiche, sous les prix. Multipliée par les quantités du devis et additionnée
+demi-sac de ciment, 0,03 m³ de sable et 2,93 heures ». Elle se modifie sur la
+fiche, sous les prix : une quantité se tape dans la colonne, un matériau
+s'ajoute depuis la bibliothèque, et le total des composants s'affiche à côté
+— de quoi voir d'un coup d'œil si le prix de vente tient encore. Multipliée par les quantités du devis et additionnée
 d'un poste à l'autre, elle donne la liste de courses du chantier ; les heures
 de machine y vont à part, car une heure de tractopelle n'est pas une heure
 d'homme.
