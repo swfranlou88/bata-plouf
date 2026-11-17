@@ -7,12 +7,16 @@ from PySide6.QtWidgets import (
 
 from ...domaine import (
     Article, Chantier, Client, FAMILLES, STATUTS_CHANTIER, TAUX_TVA,
-    TYPES_ARTICLE, UNITES, euros,
+    TYPES_ARTICLE, UNITES, euros, nombre,
 )
 from .commun import (
     bouton, champ_date, champ_euros, champ_texte, etiquette_client,
     liste_deroulante, rendre_cherchable, valeur_date,
 )
+
+# La marge de la maison, appliquée au prix d'achat pour proposer le prix de
+# vente. Vingt-cinq pour cent du prix d'achat, comme l'affiche la fiche.
+MARGE_PAR_DEFAUT = 0.25
 
 
 class DialogueBase(QDialog):
@@ -184,7 +188,12 @@ class DialogueArticle(DialogueBase):
         self.unite = self.ajouter("Unité", liste_deroulante(UNITES, a.unite))
         self.prix_achat = champ_euros(a.prix_achat)
         self.prix_vente = champ_euros(a.prix_vente)
-        self.ajouter_paire("Prix d'achat / de vente", self.prix_achat, self.prix_vente)
+        # Sans le « € » collé au nombre : on saisit des prix à la chaîne, et
+        # le symbole se met en travers du curseur. L'intitulé le porte.
+        for champ in (self.prix_achat, self.prix_vente):
+            champ.setSuffix("")
+        self.ajouter_paire("Prix d'achat / de vente (€)",
+                           self.prix_achat, self.prix_vente)
         self.marge = QLabel()
         self.ajouter("Bénéfice", self.marge)
         self.tva = self.ajouter("TVA", liste_deroulante(TAUX_TVA, a.taux_tva))
@@ -195,9 +204,19 @@ class DialogueArticle(DialogueBase):
             "jamais imprimé")
         self.ajouter("Notes internes", self.notes)
 
+        self.prix_achat.valueChanged.connect(self._suivre_achat)
         self.prix_achat.valueChanged.connect(self._marge)
         self.prix_vente.valueChanged.connect(self._marge)
         self._marge()
+
+    def _suivre_achat(self, achat: float) -> None:
+        """Le prix de vente suit l'achat, à la marge de la maison.
+
+        Un prix d'achat qu'on corrige, c'est un tarif fournisseur qui a bougé :
+        sans cela la marge fondrait sans qu'on le voie, fiche après fiche. Le
+        prix de vente reste modifiable ensuite — une affaire se négocie.
+        """
+        self.prix_vente.setValue(round(achat * (1 + MARGE_PAR_DEFAUT), 2))
 
     def _marge(self) -> None:
         achat = self.prix_achat.value()
@@ -207,8 +226,8 @@ class DialogueArticle(DialogueBase):
             self.marge.setText(f"{benefice} par unité")
             return
         self.marge.setText(
-            f"{benefice} par unité, soit {round((vente - achat) / achat * 100, 1)} % "
-            "de marge")
+            f"{benefice} par unité, soit "
+            f"{nombre((vente - achat) / achat * 100, 1)} % de marge")
 
     def resultat(self) -> Article:
         a = self.article

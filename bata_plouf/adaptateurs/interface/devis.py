@@ -506,10 +506,12 @@ class EditeurDevis(QWidget):
         colonnes.addWidget(fin, 2)
 
         outils = barre(
-            bouton("+ Prestation", self.ajouter_prestation, principal=True),
+            bouton("+ Prestation", self.ajouter_prestation),
             bouton("+ Section", self.ajouter_section),
             bouton("+ Texte libre", self.ajouter_texte),
-            bouton("Bibliothèque…", self.inserer_articles),
+            # Le geste courant, mis en avant : sur les lignes chiffrées des
+            # documents repris, la bibliothèque en fournit quinze sur seize.
+            bouton("Bibliothèque…", self.inserer_articles, principal=True),
             "-",
             bouton("↑", lambda: self.deplacer(-1)),
             bouton("↓", lambda: self.deplacer(1)),

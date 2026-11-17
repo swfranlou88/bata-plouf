@@ -139,6 +139,12 @@ et TTC.
 
 ## Devis et factures
 
+Sur une fiche, le **prix de vente suit le prix d'achat** à 25 % de marge dès
+qu'on touche à l'achat : un tarif fournisseur qui bouge ne doit pas faire
+fondre la marge en silence. Il reste modifiable à la main, une affaire se
+négocie. Les deux champs se saisissent sans le symbole « € », qui se mettait
+en travers du curseur ; l'intitulé le porte.
+
 Une fiche de la bibliothèque porte deux textes qu'il ne faut pas confondre :
 le **détail**, imprimé sous la désignation sur le devis du client, et les
 **notes internes** — temps de main d'œuvre, consommations, dates de tarif —
