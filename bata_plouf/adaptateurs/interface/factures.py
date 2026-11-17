@@ -26,7 +26,8 @@ from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, barre, bouton, champ_date, champ_entier,
     champ_texte, cle_numero, confirmer, discret, informer, etiquette_client,
-    liste_deroulante, rendre_cherchable, titre, valeur_date,
+    infobulles_si_tronque, liste_deroulante, rendre_cherchable, titre,
+    valeur_date,
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TVA, COL_UNITE,
@@ -312,6 +313,7 @@ class EditeurFacture(QWidget):
             QHeaderView.ResizeMode.ResizeToContents)
         # Une ligne sans détail ne doit pas être écrasée
         self.tableau.verticalHeader().setMinimumSectionSize(27)
+        infobulles_si_tronque(self.tableau)
 
         self.totaux = QLabel()
         self.totaux.setTextFormat(Qt.TextFormat.RichText)

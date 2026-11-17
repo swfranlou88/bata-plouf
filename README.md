@@ -151,6 +151,9 @@ pas un mot pris au milieu : quatre mille fiches se consultent comme un
 index. La part qui a répondu est surlignée dans la liste, pour qu'on voie
 pourquoi chaque fiche est restée. Accents ignorés.
 
+Une désignation plus large que sa colonne se lit **au survol** : l'infobulle
+rend le texte entier, et seulement quand il est rogné.
+
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.

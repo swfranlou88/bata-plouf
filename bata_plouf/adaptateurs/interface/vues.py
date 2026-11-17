@@ -16,7 +16,7 @@ from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, DelegueAmorce, ModeleListe, activer_le_tri,
     alerter, amorce, barre, bouton, cle_numero, confirmer, discret,
-    liste_deroulante, titre,
+    infobulles_si_tronque, liste_deroulante, titre,
 )
 from .dialogues import DialogueArticle, DialogueChantier, DialogueClient
 
@@ -60,6 +60,8 @@ class VueListe(QWidget):
         self.tableau.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tableau.doubleClicked.connect(lambda _: self.modifier())
         self.tableau.verticalHeader().setDefaultSectionSize(26)
+        # Les désignations dépassent souvent leur colonne : le survol les rend.
+        infobulles_si_tronque(self.tableau)
 
         self._trier_par = activer_le_tri(self.tableau, self.modele)
 

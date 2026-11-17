@@ -21,7 +21,8 @@ from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
     barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
     DelegueAmorce, amorce, cle_numero, confirmer, discret, etiquette_client,
-    informer, liste_deroulante, rendre_cherchable, titre, valeur_date,
+    infobulles_si_tronque, informer, liste_deroulante, rendre_cherchable,
+    titre, valeur_date,
 )
 from .vues import VueListe
 
@@ -274,6 +275,7 @@ class DialogueChoixArticle(QDialog):
         self.surbrillance = DelegueAmorce(self.tableau)
         for colonne in (0, 1):  # la référence et la désignation
             self.tableau.setItemDelegateForColumn(colonne, self.surbrillance)
+        infobulles_si_tronque(self.tableau)
 
         boutons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
@@ -390,6 +392,8 @@ class EditeurDevis(QWidget):
             QHeaderView.ResizeMode.ResizeToContents)
         # Une ligne sans détail ne doit pas être écrasée
         self.tableau.verticalHeader().setMinimumSectionSize(27)
+        # Une désignation plus large que sa colonne se lit au survol.
+        infobulles_si_tronque(self.tableau)
 
         self.totaux = QLabel()
         self.totaux.setTextFormat(Qt.TextFormat.RichText)

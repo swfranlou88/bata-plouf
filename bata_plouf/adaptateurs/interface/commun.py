@@ -10,7 +10,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel,
     QLineEdit, QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
-    QStyleOptionViewItem, QVBoxLayout, QWidget,
+    QStyleOptionViewItem, QToolTip, QVBoxLayout, QWidget,
 )
 
 from ...domaine import euros
@@ -316,6 +316,65 @@ class DelegueAmorce(QStyledItemDelegate):
                              cadre.height(), teinte)
             peintre.restore()
         super().paint(peintre, option, index)
+
+
+class _InfobulleAuSurvol(QObject):
+    """Rend au survol le texte entier d'une cellule que sa colonne rogne.
+
+    Une désignation de la bibliothèque fait couramment soixante caractères et
+    la colonne n'en montre que la moitié ; l'élargir assez reviendrait à
+    chasser les prix de l'écran. On donne donc le texte complet au survol —
+    mais seulement s'il est rogné, sinon l'infobulle recopierait ce qui se lit
+    déjà, et finirait par gêner partout.
+    """
+
+    def __init__(self, tableau):
+        super().__init__(tableau)
+        self.tableau = tableau
+
+    def eventFilter(self, objet, evenement):
+        if evenement.type() != QEvent.Type.ToolTip:
+            return False
+        index = self.tableau.indexAt(evenement.pos())
+        texte, impose = "", None
+        if index.isValid():
+            # Une cellule qui porte sa propre infobulle garde la main ; sinon
+            # on rend son texte, et seulement s'il déborde.
+            impose = index.data(Qt.ItemDataRole.ToolTipRole)
+            texte = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+        if impose:
+            QToolTip.showText(evenement.globalPos(), str(impose), self.tableau,
+                              self.tableau.visualRect(index))
+        elif texte and self.rogne(index, texte):
+            QToolTip.showText(evenement.globalPos(), texte, self.tableau,
+                              self.tableau.visualRect(index))
+        else:
+            # Sans cela l'infobulle de la cellule voisine resterait affichée.
+            QToolTip.hideText()
+        return True
+
+    def rogne(self, index, texte: str) -> bool:
+        """Le texte déborde-t-il de la place que le style lui laisse ?"""
+        reglage = QStyleOptionViewItem()
+        reglage.initFrom(self.tableau)
+        reglage.rect = self.tableau.visualRect(index)
+        police = index.data(Qt.ItemDataRole.FontRole)
+        if police is not None:
+            reglage.font = police
+        cadre = (self.tableau.style() or QApplication.style()).subElementRect(
+            QStyle.SubElement.SE_ItemViewItemText, reglage, self.tableau)
+        mesure = QFontMetrics(reglage.font)
+        # Une ligne de devis écrit son détail sous sa désignation : c'est la
+        # plus large de ces lignes qui déborde, pas leur somme.
+        return any(mesure.horizontalAdvance(morceau) > cadre.width()
+                   for morceau in texte.split("\n"))
+
+
+def infobulles_si_tronque(tableau):
+    """Fait rendre à un tableau le texte entier de ses cellules rognées."""
+    tableau._infobulle = _InfobulleAuSurvol(tableau)
+    tableau.viewport().installEventFilter(tableau._infobulle)
+    return tableau
 
 
 def cle_recherche(valeur) -> str:
