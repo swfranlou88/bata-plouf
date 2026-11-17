@@ -11,14 +11,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ...domaine import FAMILLES, TYPES_ARTICLE, date_fr, euros, nombre
+from ...domaine import FAMILLES, TYPES_ARTICLE, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, DelegueAmorce, ModeleListe, activer_le_tri,
     alerter, amorce, barre, bouton, cle_numero, confirmer, discret,
     infobulles_si_tronque, liste_deroulante, titre,
 )
-from .dialogues import DialogueArticle, DialogueChantier, DialogueClient
+from .dialogues import DialogueArticle, DialogueClient
 
 
 class VueListe(QWidget):
@@ -240,62 +240,6 @@ class VueClients(VueListe):
         dialogue = DialogueClient(self, client)
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_client(dialogue.resultat())
-            self._signaler()
-
-
-class VueChantiers(VueListe):
-    nom = "Chantiers"
-    mot_element = "chantier"
-    libelle_nouveau = "Nouveau chantier"
-    indication_recherche = "Libellé, ville, client…"
-
-    def colonnes(self):
-        return [
-            Colonne("Chantier", lambda c: c.libelle, gras=True),
-            Colonne("Client", lambda c: self.depot.nom_client(c.client_id), largeur=200),
-            Colonne("Ville", lambda c: f"{c.cp} {c.ville}".strip(), largeur=160),
-            # La date au format ISO se trie toute seule, dans le bon ordre.
-            Colonne("Début", lambda c: date_fr(c.date_debut), largeur=95,
-                    alignement=CENTRE, cle=lambda c: c.date_debut or ""),
-            Colonne("Statut", lambda c: c.statut, largeur=95, alignement=CENTRE),
-            Colonne("Devis", lambda c: str(sum(1 for d in self.depot.devis()
-                                               if d.chantier_id == c.id)),
-                    largeur=60, alignement=CENTRE,
-                    cle=lambda c: sum(1 for d in self.depot.devis()
-                                      if d.chantier_id == c.id)),
-        ]
-
-    def charger(self):
-        return self.depot.chantiers(recherche=self.recherche.text().strip(),
-                                    supprimes=self.archives)
-
-    def libelle(self, chantier):
-        return chantier.libelle
-
-    def archiver(self, chantier, definitif):
-        self.depot.supprimer_chantier(chantier.id, definitif=definitif)
-
-    def desarchiver(self, chantier):
-        self.depot.restaurer_chantier(chantier.id)
-
-    def nouveau(self):
-        if not self.depot.clients():
-            alerter(self, "Aucun client",
-                    "Créez d'abord un client : un chantier est toujours rattaché "
-                    "à un client.")
-            return
-        dialogue = DialogueChantier(self, self.depot)
-        if dialogue.exec() == QDialog.DialogCode.Accepted:
-            self.depot.enregistrer_chantier(dialogue.resultat())
-            self._signaler()
-
-    def modifier(self):
-        chantier = self.selection()
-        if chantier is None:
-            return
-        dialogue = DialogueChantier(self, self.depot, chantier)
-        if dialogue.exec() == QDialog.DialogCode.Accepted:
-            self.depot.enregistrer_chantier(dialogue.resultat())
             self._signaler()
 
 

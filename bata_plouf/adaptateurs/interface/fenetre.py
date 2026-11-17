@@ -11,11 +11,12 @@ from datetime import date
 
 from .accueil import VueAccueil
 from .mise_a_jour import Chercheur, DialogueMiseAJour
+from .chantiers import FicheChantier, VueChantiers
 from .devis import EditeurDevis, VueDevis
 from .factures import DialogueFacturer, EditeurFacture, VueFactures
 from .gabarit import VueGabarit
 from .parametres import VueParametres
-from .vues import VueCatalogue, VueChantiers, VueClients, VueOuvrages
+from .vues import VueCatalogue, VueClients, VueOuvrages
 
 # L'ordre de la barre latérale reprend celui des catégories de l'accueil.
 RUBRIQUES = [
@@ -74,6 +75,7 @@ class FenetrePrincipale(QMainWindow):
 
         self.vue_devis.ouvrir_demande.connect(self.ouvrir_devis)
         self.vue_devis.facturer_demande.connect(self.facturer_devis)
+        self.vue_chantiers.ouvrir_chantier.connect(self.ouvrir_chantier)
         self.vue_factures.ouvrir_demande.connect(self.ouvrir_facture)
 
         centre = QWidget()
@@ -216,6 +218,12 @@ class FenetrePrincipale(QMainWindow):
     def ouvrir_facture(self, facture) -> None:
         self._ouvrir(EditeurFacture(self.depot, facture), "factures")
 
+    def ouvrir_chantier(self, devis) -> None:
+        """Le devis vu du côté de l'atelier : heures et fournitures."""
+        fiche = FicheChantier(self.depot, devis)
+        fiche.devis_demande.connect(self.ouvrir_devis)
+        self._ouvrir(fiche, "chantiers")
+
     def facturer_devis(self, devis) -> None:
         """Du devis à la facture : on demande quoi facturer, puis on l'ouvre."""
         dialogue = DialogueFacturer(self, self.depot, devis)
@@ -230,9 +238,12 @@ class FenetrePrincipale(QMainWindow):
         self.editeur = editeur
         self._retour_vers = retour
         editeur.ferme.connect(self._retour_liste)
-        editeur.enregistre.connect(self.tout_rafraichir)
+        if hasattr(editeur, "enregistre"):
+            editeur.enregistre.connect(self.tout_rafraichir)
         if hasattr(editeur, "facturer_demande"):
             editeur.facturer_demande.connect(self.facturer_devis)
+        if hasattr(editeur, "chantier_demande"):
+            editeur.chantier_demande.connect(self.ouvrir_chantier)
         self.pages.addWidget(editeur)
         self.pages.setCurrentWidget(editeur)
 

@@ -267,10 +267,8 @@ class EditeurFacture(QWidget):
         self.origine = QLabel("—")
         # Huit cents fiches : on tape trois lettres plutôt que de dérouler.
         self.client = rendre_cherchable(QComboBox(), "Nom, société ou ville…")
-        self.chantier = rendre_cherchable(QComboBox(), "Chantier…")
         self.adresse_chantier = champ_texte(
-            facture.adresse_chantier,
-            "adresse des travaux, si aucune fiche chantier")
+            facture.adresse_chantier, "adresse des travaux")
         self.copier_adresse = bouton_copier_adresse(
             self.adresse_chantier, self._client_courant)
         self.objet = champ_texte(facture.objet)
@@ -281,7 +279,6 @@ class EditeurFacture(QWidget):
         self.mode_paiement = liste_deroulante(MODES_PAIEMENT, facture.mode_paiement)
         self.date_paiement = champ_date(facture.date_paiement, optionnel=True)
 
-        self.client.currentIndexChanged.connect(self._changer_client)
         for widget in (self.echeance,):
             widget.valueChanged.connect(self._recalculer)
         self.date.dateChanged.connect(self._recalculer)
@@ -348,7 +345,6 @@ class EditeurFacture(QWidget):
         gauche.addRow("Type", self.type)
         gauche.addRow("Devis d'origine", self.origine)
         gauche.addRow("Client", self.client)
-        gauche.addRow("Chantier", self.chantier)
         gauche.addRow("Adresse chantier",
                       barre(self.adresse_chantier, self.copier_adresse))
         gauche.addRow("Objet", self.objet)
@@ -421,7 +417,6 @@ class EditeurFacture(QWidget):
             self.client.addItem(etiquette_client(client), client.id)
         self.client.setCurrentIndex(max(0, self.client.findData(self.facture.client_id)))
         self.client.blockSignals(False)
-        self._changer_client()
 
         if self.facture.devis_id:
             devis = self.depot.un_devis(self.facture.devis_id)
@@ -445,14 +440,6 @@ class EditeurFacture(QWidget):
     def _client_courant(self):
         return self.depot.client(self.client.currentData() or "")
 
-    def _changer_client(self) -> None:
-        client_id = self.client.currentData() or ""
-        self.chantier.clear()
-        self.chantier.addItem("— aucun —", "")
-        for chantier in self.depot.chantiers(client_id=client_id):
-            self.chantier.addItem(chantier.libelle, chantier.id)
-        self.chantier.setCurrentIndex(max(0, self.chantier.findData(self.facture.chantier_id)))
-
     # --- verrou comptable ------------------------------------------------
 
     def _appliquer_verrou(self) -> None:
@@ -464,7 +451,7 @@ class EditeurFacture(QWidget):
         modifiable = self.facture.modifiable
         # L'adresse du chantier se fige avec le reste : elle est imprimée sur
         # la facture émise, et la corriger après coup la ferait mentir.
-        for widget in (self.client, self.chantier, self.adresse_chantier,
+        for widget in (self.client, self.adresse_chantier,
                        self.copier_adresse, self.objet, self.date,
                        self.echeance, self.notes):
             widget.setEnabled(modifiable)
@@ -571,7 +558,6 @@ class EditeurFacture(QWidget):
             return
         f = self.facture
         f.client_id = self.client.currentData() or ""
-        f.chantier_id = self.chantier.currentData() or ""
         f.objet = self.objet.text().strip()
         f.adresse_chantier = self.adresse_chantier.text().strip()
         f.date_facture = valeur_date(self.date)

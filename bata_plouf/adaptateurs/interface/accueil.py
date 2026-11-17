@@ -16,7 +16,7 @@ RUBRIQUES_ACCUEIL = [
     ("catalogue", "Matériaux", "Fournitures et prix d'achat"),
     ("ouvrages", "Ouvrages", "Ouvrages posés, prix de vente"),
     ("factures", "Factures", "Acomptes, situations, soldes"),
-    ("chantiers", "Chantiers", "Suivi des affaires en cours"),
+    ("chantiers", "Chantiers", "Heures et fournitures à prévoir"),
 ]
 
 STYLE_CARTE = """
@@ -234,8 +234,10 @@ class VueAccueil(QWidget):
         self.chiffre_retard.definir(euros(stats["ttc_en_retard"]) + " TTC")
 
         devis_attente = len(self.depot.devis(statut="envoyé"))
-        chantiers_ouverts = len([c for c in self.depot.chantiers()
-                                 if c.statut == "en cours"])
+        # Un chantier, c'est un devis vu du côté de l'atelier : ceux qui
+        # attendent une réponse ou qui sont acceptés sont du travail en vue.
+        chantiers_ouverts = len([d for d in self.depot.devis()
+                                 if d.statut in ("envoyé", "accepté")])
         factures_dues = len([f for f in self.depot.factures(statut="émise")])
 
         self.cartes["clients"].definir(stats["clients"])
@@ -250,9 +252,9 @@ class VueAccueil(QWidget):
             f"{factures_dues} à encaisser" if factures_dues
             else "Acomptes, situations, soldes")
         self.cartes["chantiers"].definir(
-            stats["chantiers"],
-            f"{chantiers_ouverts} en cours" if chantiers_ouverts
-            else "Suivi des affaires en cours")
+            stats["devis"],
+            f"{chantiers_ouverts} en vue" if chantiers_ouverts
+            else "Heures et fournitures à prévoir")
 
         messages = []
         if not societe.nom or not societe.siret:

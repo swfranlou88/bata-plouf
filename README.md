@@ -96,6 +96,7 @@ adaptateurs autour.
         formats.py        montants et dates à la française
         gabarit.py        réglages de présentation
         facturation.py    acompte, situation, solde, avoir
+        chantier.py       heures et fournitures, calculées sur le devis
         comptabilite.py   journal, écritures, récapitulatif TVA
         ports.py          ce que le domaine attend de l'extérieur
       adaptateurs/
@@ -115,7 +116,22 @@ adaptateur. `outils/verifier_architecture.py` le vérifie.
 
 L'accueil présente six catégories — clients, devis, matériaux, ouvrages,
 factures, chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie
-ouvre une liste avec création, modification et suppression.
+ouvre une liste avec création, modification et suppression — sauf les
+chantiers, qui se calculent.
+
+**Chantiers** n'est pas une liste de fiches : c'est la liste des devis, lus
+du côté de l'atelier. Ouvrir un chantier donne ce qu'on veut savoir la veille
+d'attaquer — combien d'heures, quelles fournitures, où l'on en est de la
+facturation. Les heures viennent de la composition des ouvrages, « Main
+d'oeuvre 2.930 » à l'unité telle que l'ancien logiciel la gardait,
+multipliée par les quantités du devis ; un ouvrage dont le temps est inconnu
+est annoncé comme tel plutôt que compté pour zéro. Rien ne s'enregistre :
+tout se recalcule à l'ouverture, donc rien ne peut s'y démoder. Un bouton
+mène du devis à son chantier et du chantier à son devis.
+
+La composition reprise ne porte que des heures : l'ancien logiciel ne gardait
+pas les quantités de matière d'un ouvrage. Les fournitures annoncées sont
+donc celles que le devis pose en ligne directe.
 
 **Matériaux** et **ouvrages** sont la même bibliothèque, séparée en deux
 écrans : d'un côté ce qui s'achète chez le fournisseur, de l'autre la

@@ -502,6 +502,57 @@ def main() -> int:
     verifier("et la recherche porte sur n'importe quel morceau",
              cle_recherche("ame") in cle_recherche("M. Léo MOUGEL — SAINT-AMÉ"))
 
+    print("\nChantier : heures et fournitures")
+    from bata_plouf.domaine.chantier import (
+        Catalogue, heures_unitaires, preparation,
+    )
+    pose = Article(designation="Carrelage posé", type="ouvrage", unite="m²",
+                   prix_vente=60.0, notes_internes="Main d'oeuvre  1.250")
+    sans = Article(designation="Démolition d'un mur", type="ouvrage",
+                   unite="m²", prix_vente=40.0, notes_internes="2008")
+    sac = Article(designation="Sac de ciment 35 kg", type="matériau",
+                  unite="sac", prix_vente=9.0)
+    verifier("le temps se lit dans la composition",
+             heures_unitaires(pose) == 1.25, str(heures_unitaires(pose)))
+    verifier("même sans apostrophe",
+             heures_unitaires(Article(notes_internes="Main doeuvre  0.879"))
+             == 0.879)
+    verifier("une composition sans temps ne vaut pas zéro heure",
+             heures_unitaires(sans) is None
+             and heures_unitaires(Article(notes_internes="Main d'oeuvre")) is None)
+
+    catalogue = Catalogue([pose, sans, sac])
+    chantier = Devis(lignes=[
+        Ligne(type="section", designation="Carrelage"),
+        Ligne(designation="Carrelage posé", quantite=20, unite="m²",
+              prix_unitaire=60.0, article_id=pose.id),
+        # Reprise de l'ancien logiciel : pas de lien, juste un libellé.
+        Ligne(designation="carrelage pose", quantite=4, unite="m²",
+              prix_unitaire=60.0),
+        Ligne(designation="Sac de ciment 35 kg", quantite=12, unite="sac",
+              prix_unitaire=9.0, article_id=sac.id),
+        Ligne(designation="Démolition d'un mur", quantite=3, unite="m²",
+              prix_unitaire=40.0, article_id=sans.id),
+        Ligne(type="texte", designation="Prévoir la benne"),
+    ])
+    prevu = preparation(chantier, catalogue)
+    verifier("les heures suivent les quantités",
+             abs(prevu.heures - 30.0) < 0.001, f"{prevu.heures} h")
+    verifier("une ligne reprise se retrouve par son libellé",
+             len(prevu.postes) == 2)
+    verifier("l'accent et la casse ne gênent pas le rapprochement",
+             any(abs(p.heures - 5.0) < 0.001 for p in prevu.postes))
+    verifier("les matériaux deviennent des fournitures",
+             [(f.designation, f.quantite) for f in prevu.fournitures]
+             == [("Sac de ciment 35 kg", 12.0)])
+    verifier("un ouvrage sans temps est annoncé, pas compté",
+             prevu.sans_temps == ["Démolition d'un mur"] and not prevu.complet)
+    verifier("les titres et les commentaires ne comptent pas d'heures",
+             len(prevu.postes) + len(prevu.fournitures) + len(prevu.sans_temps)
+             == 4)
+    verifier("les journées sont de sept heures",
+             abs(prevu.journees - 30.0 / 7.0) < 0.001)
+
     print("\nAdresse du chantier")
     from bata_plouf.adaptateurs.interface.commun import adresse_en_ligne
     chez_lui = Client(nom="Mougel", adresse="12 Grande Rue", cp="88120",

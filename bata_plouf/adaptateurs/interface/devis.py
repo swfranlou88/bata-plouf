@@ -394,6 +394,8 @@ class DialogueChoixArticle(QDialog):
 class EditeurDevis(QWidget):
     ferme = Signal()
     enregistre = Signal()
+    # Le devis dont on veut voir le chantier : heures et fournitures.
+    chantier_demande = Signal(object)
     # Le devis à facturer : la fenêtre principale ouvre la suite, comme
     # lorsque la demande vient de la liste.
     facturer_demande = Signal(object)
@@ -405,10 +407,8 @@ class EditeurDevis(QWidget):
 
         # Huit cents fiches : on tape trois lettres plutôt que de dérouler.
         self.client = rendre_cherchable(QComboBox(), "Nom, société ou ville…")
-        self.chantier = rendre_cherchable(QComboBox(), "Chantier…")
         self.adresse_chantier = champ_texte(
-            devis.adresse_chantier,
-            "adresse des travaux, si aucune fiche chantier")
+            devis.adresse_chantier, "adresse des travaux")
         self.copier_adresse = bouton_copier_adresse(
             self.adresse_chantier, self._client_courant)
         self.objet = champ_texte(devis.objet, "Construction d'un garage accolé de 32 m²")
@@ -420,7 +420,6 @@ class EditeurDevis(QWidget):
         self.acompte = champ_pourcent(devis.acompte_pct)
         self.numero = QLabel(devis.numero or "attribué à l'enregistrement")
 
-        self.client.currentIndexChanged.connect(self._changer_client)
         for widget in (self.remise, self.acompte):
             widget.valueChanged.connect(self._recalculer)
         self.validite.valueChanged.connect(self._recalculer)
@@ -483,7 +482,6 @@ class EditeurDevis(QWidget):
         entete = QFormLayout()
         entete.addRow("Numéro", self.numero)
         entete.addRow("Client", self.client)
-        entete.addRow("Chantier", self.chantier)
         entete.addRow("Adresse chantier",
                       barre(self.adresse_chantier, self.copier_adresse))
         entete.addRow("Objet", self.objet)
@@ -537,6 +535,7 @@ class EditeurDevis(QWidget):
             bouton("Aperçu avant impression", self.apercu),
             bouton("Enregistrer en PDF", self.exporter_pdf),
             bouton("Imprimer…", self.imprimer),
+            bouton("Chantier", self.chantier),
             bouton("Facturer…", self.facturer),
             bouton("Enregistrer", self._enregistrer_et_confirmer,
                    principal=True),
@@ -561,19 +560,9 @@ class EditeurDevis(QWidget):
         index = self.client.findData(self.devis.client_id)
         self.client.setCurrentIndex(max(0, index))
         self.client.blockSignals(False)
-        self._changer_client()
 
     def _client_courant(self):
         return self.depot.client(self.client.currentData() or "")
-
-    def _changer_client(self) -> None:
-        client_id = self.client.currentData() or ""
-        self.chantier.clear()
-        self.chantier.addItem("— aucun —", "")
-        for chantier in self.depot.chantiers(client_id=client_id):
-            self.chantier.addItem(chantier.libelle, chantier.id)
-        index = self.chantier.findData(self.devis.chantier_id)
-        self.chantier.setCurrentIndex(max(0, index))
 
     # --- lignes ----------------------------------------------------------
 
@@ -669,7 +658,6 @@ class EditeurDevis(QWidget):
     def _collecter(self, sans_numero: bool = False) -> None:
         d = self.devis
         d.client_id = self.client.currentData() or ""
-        d.chantier_id = self.chantier.currentData() or ""
         d.objet = self.objet.text().strip()
         d.adresse_chantier = self.adresse_chantier.text().strip()
         d.date_devis = valeur_date(self.date)
@@ -699,6 +687,17 @@ class EditeurDevis(QWidget):
         self.numero.setText(self.devis.numero)
         self.enregistre.emit()
         return True
+
+    def chantier(self) -> None:
+        """Le même travail, vu du côté de l'atelier.
+
+        Ce qui est à l'écran est d'abord rangé dans le devis : les heures se
+        comptent sur les lignes qu'on vient d'ajouter, pas sur celles d'hier.
+        """
+        self._collecter()
+        if self.devis.client_id:
+            self.enregistrer()
+        self.chantier_demande.emit(self.devis)
 
     def facturer(self) -> None:
         """Du devis à sa facture, sans repasser par la liste.
