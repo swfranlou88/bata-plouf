@@ -435,15 +435,16 @@ class _SelectionAuFocus(QObject):
         ligne = self.boite.lineEdit()
         if ligne is None:
             return
+        # D'abord la liste : une recherche abandonnée la fois d'avant ne doit
+        # pas restreindre encore celle qu'on vient de rouvrir. Et rétablir le
+        # filtre après coup déferait la sélection qui suit.
+        filtre = getattr(self.boite, "_filtre", None)
+        if filtre is not None:
+            filtre.chercher("")
         if self.boite.currentData() == "":
             ligne.clear()
         else:
             ligne.selectAll()
-        # Une recherche abandonnée la fois d'avant ne doit pas restreindre
-        # encore la liste qu'on vient de rouvrir.
-        filtre = getattr(self.boite, "_filtre", None)
-        if filtre is not None:
-            filtre.chercher("")
 
 
 def rendre_cherchable(boite: QComboBox, invite: str = "Taper pour filtrer…") -> QComboBox:
@@ -458,6 +459,9 @@ def rendre_cherchable(boite: QComboBox, invite: str = "Taper pour filtrer…") -
     boite.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
     boite.lineEdit().setPlaceholderText(invite)
     boite._selection = _SelectionAuFocus(boite)
+    # Sur les deux : au clic, c'est la liste déroulante qui reçoit l'entrée
+    # dans le champ, et au clavier c'est la ligne de saisie.
+    boite.installEventFilter(boite._selection)
     boite.lineEdit().installEventFilter(boite._selection)
 
     filtre = _ContientSansAccent(boite)
