@@ -375,17 +375,33 @@ def main() -> int:
     verifier("l'adresse du client est imprimée", "Cambon" in page)
 
     facture_classique = html_document(depot, totale)
-    verifier("l'attestation est demandée sur un devis au taux réduit",
-             "attestation" in page.lower(),
-             "taux du devis d'essai : "
-             + str(sorted({l.taux_tva for l in simple.lignes if l.chiffree})))
+    # Trois bas de page, choisis par le document : c'est le texte qui change,
+    # pas une phrase ajoutée d'office.
+    profil = depot.societe
+    profil.conditions_paiement = "Devis au taux normal."
+    profil.conditions_devis_reduit = "Devis au taux réduit, attestation jointe."
+    profil.conditions_facture = "Facture : règlement à réception."
+    depot.enregistrer_societe(profil)
+    simple.conditions = ""
     taux_normal = depuis_dict(Devis, en_dict(simple))
     for ligne in taux_normal.lignes:
         ligne.taux_tva = 20.0
-    verifier("mais pas sur un devis au taux normal",
-             "attestation" not in html_document(depot, taux_normal).lower())
-    verifier("ni sur une facture, qui ne la réclame plus",
-             "attestation" not in facture_classique.lower())
+    totale.conditions = ""
+
+    verifier("un devis au taux réduit demande l'attestation",
+             "attestation" in html_document(depot, simple).lower(),
+             "taux du devis d'essai : "
+             + str(sorted({l.taux_tva for l in simple.lignes if l.chiffree})))
+    verifier("un devis au taux normal ne la demande pas",
+             "attestation" not in html_document(depot, taux_normal).lower()
+             and "taux normal" in html_document(depot, taux_normal).lower())
+    verifier("une facture a son propre bas de page",
+             "règlement à réception" in html_document(depot, totale).lower())
+    verifier("et le texte écrit sur la pièce l'emporte sur les trois",
+             "à la main" in html_document(
+                 depot, depuis_dict(Devis, {**en_dict(simple),
+                                            "conditions": "Écrit à la main."})
+             ).lower())
 
     verifier("et il finit sur le total TTC",
              "RESTE DÛ" not in page and "SOLDE" not in page)
@@ -408,6 +424,9 @@ def main() -> int:
     profil = depot.societe
     profil.conditions_paiement = "Acompte à la commande."
     profil.conditions_facture = "Règlement à réception."
+    # Vide, le texte du taux réduit laisse la place à celui du devis : c'est
+    # ce repli qu'on éprouve ici.
+    profil.conditions_devis_reduit = ""
     depot.enregistrer_societe(profil)
     totale.conditions = ""
     verifier("la facture prend ses propres conditions",

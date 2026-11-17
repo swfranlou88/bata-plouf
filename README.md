@@ -292,12 +292,19 @@ frôlait le bord de la feuille. Deux documents denses des années passées —
 trente-cinq et trente-huit lignes — se réimpriment du coup sur deux pages ;
 les marges se règlent écran « Modèle du devis » pour qui préfère l'inverse.
 
-Un devis qui porte des lignes au **taux réduit** — 10 % en rénovation,
-5,5 % en rénovation énergétique — demande l'attestation signée du client
-(articles 279-0 bis et 278-0 bis A du CGI). La phrase s'imprime alors toute
-seule, et seulement alors : elle était figée dans le texte des devis repris,
-donc imprimée aussi sur des devis au taux normal. Une facture ne la réclame
-pas : l'attestation accompagne le devis.
+Le bas de page se règle en **trois textes**, dans les Paramètres, parce que
+les trois cas ne disent pas la même chose :
+
+- **devis au taux normal** — ce qu'on attend du client en retour ;
+- **devis au taux réduit** (10 %, 5,5 %) — le même, plus l'attestation signée
+  que les travaux de rénovation exigent (articles 279-0 bis et 278-0 bis A du
+  CGI) ;
+- **facture** — règlement, échéance, coordonnées bancaires.
+
+Le document choisit le sien d'après son type et la TVA de ses lignes. Le
+texte écrit sur une pièce précise l'emporte toujours : les devis repris de
+l'ancien logiciel portaient le leur, figé, ce qui demandait l'attestation sur
+des chantiers neufs. Ils ont été libérés pour suivre la règle.
 
 Le cadre des totaux finit sur le **TOTAL TTC** : c'est le chiffre qu'on
 cherche des yeux au bas d'un devis, et rien ne doit le suivre. L'acompte et

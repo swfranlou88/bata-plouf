@@ -59,6 +59,10 @@ class VueParametres(QWidget):
         self.acompte = champ_pourcent(s.acompte_defaut_pct)
         self.conditions = QPlainTextEdit(s.conditions_paiement)
         self.conditions.setMaximumHeight(70)
+        self.conditions_reduit = QPlainTextEdit(s.conditions_devis_reduit)
+        self.conditions_reduit.setMaximumHeight(70)
+        self.conditions_reduit.setPlaceholderText(
+            "Pour les travaux à 10 % ou 5,5 % — vide = le texte ci-dessus")
         self.mentions = QPlainTextEdit(s.mentions_devis)
         self.mentions.setMaximumHeight(70)
         self.conditions_f = QPlainTextEdit(s.conditions_facture)
@@ -142,7 +146,8 @@ class VueParametres(QWidget):
             ("Durée de validité", self.validite),
             ("Taux de TVA", self.tva_defaut),
             ("Acompte", self.acompte),
-            ("Conditions de règlement", self.conditions),
+            ("Conditions — taux normal", self.conditions),
+            ("Conditions — taux réduit", self.conditions_reduit),
             ("Mentions", self.mentions),
         ]))
         disposition.addWidget(self._groupe("Valeurs par défaut des factures", [
@@ -381,6 +386,7 @@ class VueParametres(QWidget):
             taux_tva_defaut=float(self.tva_defaut.currentData()),
             acompte_defaut_pct=self.acompte.value(),
             conditions_paiement=self.conditions.toPlainText().strip(),
+            conditions_devis_reduit=self.conditions_reduit.toPlainText().strip(),
             mentions_devis=self.mentions.toPlainText().strip(),
             conditions_facture=self.conditions_f.toPlainText().strip(),
             mentions_facture=self.mentions_f.toPlainText().strip(),

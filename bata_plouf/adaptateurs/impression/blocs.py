@@ -329,10 +329,20 @@ def _rang_prestation(ctx: Contexte, ligne: Ligne, cols: list[ColonneDevis],
     return f"<tr>{cellules}</tr>"
 
 
-def conditions_par_defaut(societe, est_facture: bool) -> str:
-    """Les conditions du profil, celles de la facture si elle en a."""
+def conditions_par_defaut(societe, est_facture: bool,
+                          reduit: bool = False) -> str:
+    """Le bas de page qui convient au document.
+
+    Trois textes, parce que les trois cas ne disent pas la même chose : une
+    facture réclame un paiement, un devis annonce un acompte, et un devis au
+    taux réduit demande en plus l'attestation signée du client. Chacun est
+    réglable dans les Paramètres ; vide, il retombe sur celui du devis.
+    """
     if est_facture and societe.conditions_facture:
         return societe.conditions_facture
+    reduites = getattr(societe, "conditions_devis_reduit", "")
+    if not est_facture and reduit and reduites:
+        return reduites
     return societe.conditions_paiement
 
 
@@ -343,15 +353,14 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
 
     gauche = []
     if g.afficher_conditions:
-        texte = d.conditions or conditions_par_defaut(s, ctx.est_facture)
+        texte = d.conditions or conditions_par_defaut(
+            s, ctx.est_facture, taux_reduit(d))
         if texte:
             gauche.append(f"<b>Conditions de règlement</b><br>{echapper(texte)}")
     if g.afficher_mentions:
         texte = d.mentions or s.mentions_devis
         if texte:
             gauche.append(f"<b>Mentions</b><br>{echapper(texte)}")
-    if not ctx.est_facture and taux_reduit(d):
-        gauche.append("<i>Travaux au taux réduit : merci de joindre l'attestation, datée et signée.</i>")
     if any(l.taux == 0.0 for l in t.tva):
         gauche.append("<i>Autoliquidation de la TVA : TVA due par le preneur, "
                       "article 283-2 nonies du CGI.</i>")

@@ -341,7 +341,8 @@ def _mentions(ctx: Contexte) -> str:
     g, d, s = ctx.gabarit, ctx.document, ctx.societe
     morceaux = []
     if g.afficher_conditions:
-        texte = d.conditions or conditions_par_defaut(s, ctx.est_facture)
+        texte = d.conditions or conditions_par_defaut(
+            s, ctx.est_facture, taux_reduit(d))
         if texte:
             morceaux.append(echapper(texte))
     if g.afficher_mentions:
@@ -349,11 +350,6 @@ def _mentions(ctx: Contexte) -> str:
                                else s.mentions_devis)
         if texte:
             morceaux.append(echapper(texte))
-    if not ctx.est_facture and taux_reduit(d):
-        # L'attestation ne vaut que pour le taux réduit : elle était écrite
-        # en dur dans les conditions des devis repris, donc imprimée aussi
-        # sur des devis au taux normal. C'est une règle, pas un texte.
-        morceaux.append("Travaux au taux réduit : merci de joindre l'attestation, datée et signée.")
     if any(l.taux == 0.0 for l in ctx.totaux.tva):
         morceaux.append("Autoliquidation de la TVA : TVA due par le preneur, "
                         "article 283-2 nonies du CGI.")

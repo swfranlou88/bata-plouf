@@ -105,12 +105,17 @@ class Societe:
     delai_paiement_jours: int = 30
     taux_tva_defaut: float = 10.0
     acompte_defaut_pct: float = 30.0
+    # Le bas de page d'un devis au taux normal.
     conditions_paiement: str = (
         "Acompte à la commande, solde à la fin des travaux. "
         "Paiement par chèque ou virement à réception de facture."
     )
-    # Les conditions propres à la facture : un devis annonce un acompte, une
-    # facture réclame un paiement. Vide, la facture reprend celles du devis.
+    # Celui d'un devis au taux réduit : les travaux de rénovation demandent
+    # une attestation signée du client, qu'on joint au devis. Vide, le devis
+    # reprend le texte ci-dessus.
+    conditions_devis_reduit: str = ""
+    # Celui d'une facture : un devis annonce un acompte, une facture réclame
+    # un paiement. Vide, la facture reprend celles du devis.
     conditions_facture: str = ""
     mentions_devis: str = (
         "Devis gratuit, valable pour la durée indiquée ci-dessus. "
