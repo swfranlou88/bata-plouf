@@ -284,35 +284,67 @@ def amorce(texte: str, cherche: str) -> int:
     return positions[len(voulu) - 1] + 1
 
 
+def morceau(texte: str, cherche: str) -> tuple[int, int]:
+    """Où la recherche tombe dans le texte : position et longueur.
+
+    (0, 0) si elle n'y est pas. À la différence d'amorce, elle est cherchée
+    n'importe où : les listes de clients, de devis et de factures cherchent
+    ainsi — on tape « ame » pour trouver SAINT-AMÉ.
+    """
+    voulu, _ = plier(cherche)
+    if not voulu:
+        return (0, 0)
+    trouve, positions = plier(texte)
+    ou = trouve.find(voulu)
+    if ou < 0:
+        return (0, 0)
+    debut = positions[ou]
+    fin = positions[ou + len(voulu) - 1] + 1
+    return (debut, fin - debut)
+
+
 class DelegueAmorce(QStyledItemDelegate):
     """Surligne, dans la cellule, la part qui a répondu à la recherche.
 
     Sans cela, une liste filtrée ne dit pas pourquoi telle fiche s'y trouve
     et telle autre non.
+
+    Deux façons de mordre, selon la liste : la bibliothèque cherche par le
+    début d'un nom — quatre mille fiches se consultent comme un index —, les
+    autres listes n'importe où dans le texte. Le surlignage suit la règle de
+    sa liste, sinon il montrerait autre chose que ce qui a filtré.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, depuis_le_debut: bool = True):
         super().__init__(parent)
         self.cherche = ""
+        self.depuis_le_debut = depuis_le_debut
 
     def chercher(self, texte: str) -> None:
         self.cherche = texte or ""
 
+    def _part(self, texte: str) -> tuple[int, int]:
+        if self.depuis_le_debut:
+            return (0, amorce(texte, self.cherche))
+        return morceau(texte, self.cherche)
+
     def paint(self, peintre, option, index) -> None:
         reglage = QStyleOptionViewItem(option)
         self.initStyleOption(reglage, index)
-        longueur = amorce(reglage.text, self.cherche)
+        debut, longueur = self._part(reglage.text)
         if longueur:
             cadre = (reglage.widget.style() if reglage.widget
                      else QApplication.style()).subElementRect(
                 QStyle.SubElement.SE_ItemViewItemText, reglage, reglage.widget)
-            largeur = QFontMetrics(reglage.font).horizontalAdvance(
-                reglage.text[:longueur])
+            mesure = QFontMetrics(reglage.font)
+            avant = mesure.horizontalAdvance(reglage.text[:debut])
+            largeur = mesure.horizontalAdvance(
+                reglage.text[debut:debut + longueur])
             teinte = QColor(option.palette.highlight().color())
             teinte.setAlpha(80 if reglage.state & QStyle.StateFlag.State_Selected
                             else 110)
             peintre.save()
-            peintre.fillRect(cadre.left(), cadre.top(), largeur + 2,
+            peintre.fillRect(cadre.left() + avant, cadre.top(), largeur + 2,
                              cadre.height(), teinte)
             peintre.restore()
         super().paint(peintre, option, index)

@@ -30,11 +30,20 @@ class VueListe(QWidget):
     indication_recherche = "Rechercher…"
     mot_element = "élément"
     libelle_nouveau = "Nouveau"
+    # Les colonnes où la recherche peut mordre, donc où la surbrillance a
+    # quelque chose à montrer. Vide : toutes.
+    colonnes_cherchees: tuple = ()
+    # La bibliothèque cherche par le début d'un nom ; les autres listes
+    # n'importe où dans le texte. Le surlignage suit la même règle.
+    recherche_par_debut = False
     libelle_modifier = "Modifier"
 
     def __init__(self, depot, parent=None):
         super().__init__(parent)
         self.depot = depot
+        if not hasattr(self, "surbrillance"):
+            self.surbrillance = DelegueAmorce(
+                depuis_le_debut=self.recherche_par_debut)
 
         self.recherche = QLineEdit()
         self.recherche.setPlaceholderText(self.indication_recherche)
@@ -64,6 +73,11 @@ class VueListe(QWidget):
         infobulles_si_tronque(self.tableau)
 
         self._trier_par = activer_le_tri(self.tableau, self.modele)
+        # Une liste filtrée doit dire pourquoi chaque ligne est restée.
+        self.surbrillance.chercher(self.recherche.text().strip())
+        colonnes = self.colonnes_cherchees or range(len(self.modele.colonnes))
+        for colonne in colonnes:
+            self.tableau.setItemDelegateForColumn(colonne, self.surbrillance)
 
         disposition = QVBoxLayout(self)
         disposition.setContentsMargins(16, 14, 16, 14)
@@ -179,6 +193,7 @@ class VueListe(QWidget):
         self._signaler()
 
     def rafraichir(self) -> None:
+        self.surbrillance.chercher(self.recherche.text().strip())
         elements = self.charger()
         self.modele.definir(elements)
         quoi = "dans la corbeille" if self.archives else "au total"
@@ -267,18 +282,16 @@ class VueCatalogue(VueListe):
     # Les colonnes où la recherche peut mordre, et donc où la surbrillance
     # a quelque chose à montrer : le code et le nom.
     colonnes_cherchees = (0, 1)
+    # Ici seulement, on cherche par le début : quatre mille fiches se
+    # consultent comme un index.
+    recherche_par_debut = True
 
     def __init__(self, depot, parent=None):
         self.famille = liste_deroulante(["Toutes les familles"] + FAMILLES)
         self.type = liste_deroulante(["Tous les types"] + self.types_filtrables)
-        # Avant le socle : il rafraîchit la liste dès sa construction, et
-        # cherche alors déjà la surbrillance.
-        self.surbrillance = DelegueAmorce()
         super().__init__(depot, parent)
         self.famille.currentIndexChanged.connect(self.rafraichir)
         self.type.currentIndexChanged.connect(self.rafraichir)
-        for colonne in self.colonnes_cherchees:
-            self.tableau.setItemDelegateForColumn(colonne, self.surbrillance)
 
     def filtres(self):
         # Un seul type possible : la liste déroulante n'aurait rien à offrir.
@@ -346,7 +359,6 @@ class VueCatalogue(VueListe):
         self.depot.restaurer_article(article.id)
 
     def rafraichir(self):
-        self.surbrillance.chercher(self.recherche.text().strip())
         familles = sorted(set(FAMILLES) | set(self.depot.familles()))
         courante = self.famille.currentText()
         if [self.famille.itemText(i) for i in range(1, self.famille.count())] != familles:

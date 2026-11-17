@@ -224,6 +224,11 @@ Le bouton **Bibliothèque…** d'un devis ou d'une facture ouvre sur les
 **ouvrages** : une ligne de devis vend une prestation posée, pas un sac de
 ciment. Les matériaux restent à un clic, pour ce qu'on livre sans le poser.
 
+**Toutes les listes surlignent** ce qui a répondu à la recherche : on voit
+pourquoi chaque ligne est restée. Chacune surligne selon sa propre règle —
+la bibliothèque par le début d'un nom, les clients, devis et factures
+n'importe où dans le texte, car c'est ainsi qu'ils filtrent.
+
 La recherche de la bibliothèque prend le **début** d'un nom ou d'un code,
 pas un mot pris au milieu : quatre mille fiches se consultent comme un
 index. La part qui a répondu est surlignée dans la liste, pour qu'on voie
