@@ -114,6 +114,14 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: uv run --with pyinstaller python outils/construire.py
 
+      # L'installateur : la petite application qu'on donne à qui n'a encore
+      # rien, et que le README propose en téléchargement. Construit une seule
+      # fois — c'est de l'AppleScript, il ne dépend pas du processeur.
+      - name: Construire l'installateur
+        if: matrix.os == 'macos-15'
+        shell: bash
+        run: uv run python outils/construire_installateur.py
+
       - name: Déposer l'archive
         uses: actions/upload-artifact@v7
         with:

@@ -78,14 +78,29 @@ def signer(app: Path) -> None:
                     str(app)], check=True, capture_output=True)
 
 
+def empaqueter(app: Path) -> Path:
+    """L'archive qu'on met en ligne, sous le nom qu'attend le README.
+
+    « ditto » et non zip : il conserve la structure du paquet, sans quoi
+    macOS refuse d'ouvrir ce qui en sort.
+    """
+    archive = RACINE / "dist" / "Installer-Bata-plouf.zip"
+    archive.unlink(missing_ok=True)
+    subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent",
+                    str(app), str(archive)], check=True)
+    return archive
+
+
 def main() -> None:
     depot = depot_choisi()
     app = compiler(depot)
     habiller(app)
     signer(app)
+    archive = empaqueter(app)
     poids = sum(f.stat().st_size for f in app.rglob("*")
                 if f.is_file() and not f.is_symlink())
     print(f"{app}")
+    print(f"{archive}")
     print(f"dépôt visé : {depot}")
     print(f"taille : {poids / 1024:.0f} Ko")
 

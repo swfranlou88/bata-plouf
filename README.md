@@ -22,6 +22,14 @@ et Qt, elle ne dépend de rien d'autre.
 3. Il détecte l'architecture du Mac, télécharge la dernière version publiée,
    l'installe dans **Applications** et la lance.
 
+Gardé dans le Dock, il sert ensuite de raccourci et ne parle que s'il a
+quelque chose à dire : si le logiciel tourne déjà, il le ramène devant ; s'il
+est installé et à jour, il l'ouvre, sans une fenêtre ; une version plus
+récente est la seule chose qui le fasse proposer quoi que ce soit. Sans
+réseau, il ouvre ce qui est installé plutôt que de se plaindre. Pour réparer
+une installation abîmée, supprimer `Bata-plouf.app` puis le relancer : il
+réinstalle.
+
 Sans installateur, l'archive `Bata-plouf-<version>-macos-<arch>.zip` de la
 release se déplie et se glisse à la main dans Applications.
 
