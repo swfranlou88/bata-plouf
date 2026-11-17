@@ -114,6 +114,11 @@ adaptateur. `outils/verifier_architecture.py` le vérifie.
 
 ## Les écrans
 
+Les textes de second plan — descriptions, notes sous les tableaux, compteurs —
+sont d'un **bleu-vert sourd** plutôt que du gris des bordures : sur fond
+sombre, ce gris-là se noyait. La teinte se choisit d'après le thème en cours
+et se recalcule si le système bascule pendant que le logiciel tourne.
+
 L'accueil présente six catégories — clients, devis, matériaux, ouvrages,
 factures, chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie
 ouvre une liste avec création, modification et suppression — sauf les

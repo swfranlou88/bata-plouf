@@ -21,7 +21,8 @@ from ..impression import html_feuille
 from ...domaine.facturation import avancement_facture
 from .commun import (
     CENTRE, Colonne, DROITE, ModeleListe, activer_le_tri, barre, bouton,
-    cle_numero, discret, infobulles_si_tronque, liste_deroulante, titre,
+    cle_numero, discret, infobulles_si_tronque, liste_deroulante,
+    teinte_discrete, titre,
 )
 from .vues import VueListe
 
@@ -306,8 +307,10 @@ class FicheChantier(QWidget):
         infobulles_si_tronque(tableau)
         return tableau
 
-    @staticmethod
-    def _table(rangs) -> str:
+    def _table(self, rangs) -> str:
+        # Les intitulés prennent la même teinte que les textes de second
+        # plan : « palette(mid) » se noierait sur fond sombre.
+        teinte = teinte_discrete(self.palette())
         return "<table cellpadding='2'>" + "".join(
-            f"<tr><td style='color:palette(mid);'>{libelle}&nbsp;&nbsp;</td>"
+            f"<tr><td style='color:{teinte};'>{libelle}&nbsp;&nbsp;</td>"
             f"<td>{valeur}</td></tr>" for libelle, valeur in rangs) + "</table>"

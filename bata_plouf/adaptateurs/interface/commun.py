@@ -6,7 +6,7 @@ from PySide6.QtCore import (
     QAbstractTableModel, QEvent, QItemSelectionModel, QModelIndex, QObject,
     QSortFilterProxyModel, QTimer, Qt,
 )
-from PySide6.QtGui import QColor, QFont, QFontMetrics
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel,
     QLineEdit, QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
@@ -524,10 +524,55 @@ def titre(texte: str, taille: int = 16) -> QLabel:
     return etiquette
 
 
+# Le gris de « palette(mid) » est fait pour les bordures, pas pour du texte :
+# sur fond sombre il se noie, et les notes deviennent illisibles. On prend un
+# bleu-vert sourd — assez clair sur fond sombre, assez foncé sur fond clair —
+# qui se distingue du texte courant sans crier comme une couleur d'accent.
+TEINTE_DISCRETE_SOMBRE = "#79c6d8"
+TEINTE_DISCRETE_CLAIRE = "#4d6f79"
+
+
+def teinte_discrete(palette=None) -> str:
+    """La couleur des textes de second plan, selon le thème en cours."""
+    if palette is None:
+        palette = QApplication.palette()
+    fond = palette.color(QPalette.ColorRole.Window)
+    return (TEINTE_DISCRETE_SOMBRE if fond.lightness() < 128
+            else TEINTE_DISCRETE_CLAIRE)
+
+
+class Discret(QLabel):
+    """Un texte de second plan, lisible en thème clair comme en sombre.
+
+    La couleur se recalcule quand le système bascule : sur un Mac réglé sur
+    « automatique », le thème change au coucher du soleil, et le logiciel
+    reste ouvert plus longtemps que cela.
+    """
+
+    def __init__(self, texte: str = "", parent=None):
+        super().__init__(texte, parent)
+        self._teinte = ""
+        self._teinter()
+
+    def changeEvent(self, evenement):
+        if evenement.type() in (QEvent.Type.PaletteChange,
+                                QEvent.Type.ApplicationPaletteChange):
+            self._teinter()
+        super().changeEvent(evenement)
+
+    def _teinter(self) -> None:
+        # Poser la feuille de style change la palette du widget, qui rappelle
+        # changeEvent : sans cette comparaison, on tournerait en rond jusqu'à
+        # épuisement de la pile.
+        voulue = teinte_discrete(self.palette())
+        if voulue == self._teinte:
+            return
+        self._teinte = voulue
+        self.setStyleSheet(f"color: {voulue};")
+
+
 def discret(texte: str) -> QLabel:
-    etiquette = QLabel(texte)
-    etiquette.setStyleSheet("color: palette(mid);")
-    return etiquette
+    return Discret(texte)
 
 
 def barre(*widgets) -> QWidget:
