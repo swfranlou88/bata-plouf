@@ -127,6 +127,8 @@ Sur un devis ou une facture, le client se cherche au clavier : on tape trois
 lettres du nom, de la société ou de la ville et la liste se réduit. Accents
 et traits d'union sont ignorés — l'ancien logiciel écrivait « SAINT-AMÉ » et
 « SAINT AME » dans la même base.
+Un champ posé sur « — aucun — » se vide dès qu'on entre dedans : la mention
+dit qu'on n'a rien choisi, elle n'est pas un texte à effacer à la main.
 
 Les fiches couvrent : pour un **client**, numéro automatique, civilité, nom,
 adresse, deux téléphones, description ; pour un **matériau**, référence

@@ -409,17 +409,41 @@ class _ContientSansAccent(QSortFilterProxyModel):
 
 
 class _SelectionAuFocus(QObject):
-    """Entrer dans le champ sélectionne le nom qui s'y trouve.
+    """Entrer dans le champ met de côté ce qui s'y trouve.
 
     Sans cela, les lettres tapées s'ajouteraient au nom déjà présent et la
     recherche ne trouverait rien. Le choix est différé d'un tour de boucle :
     au moment du clic, Qt n'a pas encore posé le curseur.
+
+    Sur « — aucun — », il n'y a rien à garder : la mention dit seulement
+    qu'on n'a rien choisi, et la laisser obligerait à l'effacer à la main
+    avant de taper. Le champ se vide alors tout seul, et l'invite prend la
+    place. Une liste qui ne propose pas ce choix-là n'est pas concernée :
+    c'est le repère vide de l'entrée qui la désigne, pas son libellé.
     """
+
+    def __init__(self, boite):
+        super().__init__(boite)
+        self.boite = boite
 
     def eventFilter(self, objet, evenement):
         if evenement.type() == QEvent.Type.FocusIn:
-            QTimer.singleShot(0, objet.selectAll)
+            QTimer.singleShot(0, self.entrer)
         return False
+
+    def entrer(self) -> None:
+        ligne = self.boite.lineEdit()
+        if ligne is None:
+            return
+        if self.boite.currentData() == "":
+            ligne.clear()
+        else:
+            ligne.selectAll()
+        # Une recherche abandonnée la fois d'avant ne doit pas restreindre
+        # encore la liste qu'on vient de rouvrir.
+        filtre = getattr(self.boite, "_filtre", None)
+        if filtre is not None:
+            filtre.chercher("")
 
 
 def rendre_cherchable(boite: QComboBox, invite: str = "Taper pour filtrer…") -> QComboBox:
@@ -438,6 +462,7 @@ def rendre_cherchable(boite: QComboBox, invite: str = "Taper pour filtrer…") -
 
     filtre = _ContientSansAccent(boite)
     filtre.setSourceModel(boite.model())
+    boite._filtre = filtre
 
     completeur = QCompleter(filtre, boite)
     # C'est notre filtre qui trie les lignes ; celui de Qt ne doit pas
