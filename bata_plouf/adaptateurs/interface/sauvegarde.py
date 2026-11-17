@@ -76,6 +76,11 @@ class DialogueSecrets(QDialog):
                                    | QDialogButtonBox.StandardButton.Cancel)
         boutons.button(QDialogButtonBox.StandardButton.Ok).setText("Enregistrer")
         boutons.button(QDialogButtonBox.StandardButton.Cancel).setText("Plus tard")
+        # Essayer avant d'enregistrer : un jeton mal réglé se voit ici, pas
+        # dans un mois au moment où la sauvegarde devait partir.
+        boutons.addButton("Tester l'accès",
+                          QDialogButtonBox.ButtonRole.ActionRole
+                          ).clicked.connect(self._tester)
         boutons.accepted.connect(self._valider)
         boutons.rejected.connect(self.reject)
 
@@ -89,8 +94,18 @@ class DialogueSecrets(QDialog):
             "« Contents : Read and write »."))
         disposition.addWidget(boutons)
 
+    def _tester(self) -> None:
+        """Dire ce que le jeton peut faire, avant de s'en remettre à lui."""
+        try:
+            resume = sauvegarde_en_ligne.verifier_acces(
+                self.depot_cible.text(), self.jeton.text().strip())
+        except ErreurSauvegarde as erreur:
+            alerter(self, "Accès refusé", str(erreur))
+            return
+        informer(self, "Accès vérifié", resume)
+
     def _valider(self) -> None:
-        cible = self.depot_cible.text().strip().strip("/")
+        cible = sauvegarde_en_ligne.normaliser(self.depot_cible.text())
         if "/" not in cible:
             alerter(self, "Dépôt incomplet",
                     "Le dépôt s'écrit « compte/nom », par exemple "

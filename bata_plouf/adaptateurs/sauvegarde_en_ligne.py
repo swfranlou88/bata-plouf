@@ -33,6 +33,47 @@ class ErreurSauvegarde(Exception):
     """Ce qui empêche la sauvegarde d'arriver à destination."""
 
 
+def normaliser(depot: str) -> str:
+    """« compte/nom », quel que soit ce qu'on a collé.
+
+    On colle volontiers l'adresse de la page GitHub, ou le lien de clonage
+    qui finit par « .git ». Les deux désignent le bon dépôt et méritent
+    mieux qu'un « introuvable ».
+    """
+    texte = (depot or "").strip()
+    for prefixe in ("https://github.com/", "http://github.com/",
+                    "git@github.com:", "github.com/"):
+        if texte.lower().startswith(prefixe):
+            texte = texte[len(prefixe):]
+    texte = texte.strip("/")
+    if texte.endswith(".git"):
+        texte = texte[:-4]
+    return texte
+
+
+def verifier_acces(depot: str, jeton: str) -> str:
+    """Dit en une phrase ce que le jeton peut faire sur ce dépôt.
+
+    GitHub répond 404 aussi bien pour un dépôt qui n'existe pas que pour un
+    dépôt privé que le jeton n'a pas le droit de voir — c'est voulu, cela
+    évite de révéler l'existence des dépôts privés. D'où ce contrôle à
+    part, qui va chercher ce que l'API veut bien dire de plus.
+    """
+    depot = normaliser(depot)
+    if "/" not in depot:
+        raise ErreurSauvegarde(
+            "Le dépôt s'écrit « compte/nom », par exemple "
+            "« dupont/bata-plouf-sauvegardes ».")
+    fiche = _demander(f"{API}/repos/{depot}", jeton)
+    droits = fiche.get("permissions") or {}
+    if not droits.get("push"):
+        raise ErreurSauvegarde(
+            f"Le jeton voit {depot} mais n'a pas le droit d'y écrire. "
+            "Il lui faut « Contents : Read and write ».")
+    visibilite = "privé" if fiche.get("private") else "public"
+    return f"{depot} ({visibilite}) — écriture autorisée."
+
+
 def nom_du_mois(jour: date | None = None, chiffre: bool = True) -> str:
     """Un fichier par mois, écrasé s'il existe.
 
@@ -73,8 +114,16 @@ def _message(erreur: urllib.error.HTTPError) -> str:
         return ("Jeton sans le droit d'écrire sur ce dépôt. Il lui faut "
                 "« Contents : Read and write ».")
     if erreur.code == 404:
-        return ("Dépôt introuvable, ou invisible pour ce jeton. Vérifiez le "
-                "nom « compte/dépôt » et les dépôts autorisés sur le jeton.")
+        # GitHub répond 404 au lieu de 403 sur un dépôt privé qu'on n'a pas
+        # le droit de voir : « introuvable » veut souvent dire « pas pour
+        # vous ». Les trois causes se valent, autant les dire toutes.
+        return ("Dépôt introuvable — ou invisible pour ce jeton, ce que "
+                "GitHub ne distingue pas. Trois choses à vérifier :\n\n"
+                "· le nom, « compte/dépôt », sans l'adresse complète ;\n"
+                "· le jeton : dans « Repository access », le dépôt doit être "
+                "coché nommément (« Only select repositories ») ;\n"
+                "· ses permissions : « Contents » doit être sur « Read and "
+                "write », pas seulement « Read ».")
     if erreur.code == 422:
         return "GitHub a refusé la demande : " + erreur.read().decode(
             "utf-8", "replace")[:200]
@@ -105,7 +154,7 @@ def _release(depot: str, jeton: str) -> dict:
 def deposer(depot: str, jeton: str, fichier: Path | str,
             nom: str = "") -> str:
     """Envoie le fichier chiffré et rend son adresse de téléchargement."""
-    depot = (depot or "").strip().strip("/")
+    depot = normaliser(depot)
     if "/" not in depot:
         raise ErreurSauvegarde(
             "Le dépôt s'écrit « compte/nom », par exemple "
@@ -157,6 +206,7 @@ def telecharger(depot: str, jeton: str, nom: str, destination: Path | str) -> Pa
     L'adresse publique d'une pièce jointe ne répond pas sur un dépôt privé :
     il faut passer par l'API, qui redirige vers le fichier lui-même.
     """
+    depot = normaliser(depot)
     release = _demander(f"{API}/repos/{depot}/releases/tags/{ETIQUETTE}", jeton)
     piece = next((p for p in release.get("assets") or []
                   if p.get("name") == nom), None)
@@ -187,8 +237,8 @@ def telecharger(depot: str, jeton: str, nom: str, destination: Path | str) -> Pa
 def liste(depot: str, jeton: str) -> list[tuple[str, int, str]]:
     """Ce qui est déjà en ligne : nom, taille, date — pour pouvoir le dire."""
     try:
-        release = _demander(f"{API}/repos/{depot}/releases/tags/{ETIQUETTE}",
-                            jeton)
+        release = _demander(f"{API}/repos/{normaliser(depot)}/releases/tags/"
+                            f"{ETIQUETTE}", jeton)
     except ErreurSauvegarde as erreur:
         if "introuvable" in str(erreur):
             return []
