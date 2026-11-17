@@ -465,17 +465,19 @@ class EditeurFacture(QWidget):
         self.mode_paiement.setStyleSheet("" if mode or not date else attente)
         self.date_paiement.setStyleSheet("" if date or not mode else attente)
 
-        payee = self.facture.statut == "payée"
-        if payee:
+        if self.facture.statut == "payée":
             self.bouton_payee.setText("Enlever le paiement de la facture")
             rouge = teinte_defaire(self.palette())
             self.bouton_payee.setStyleSheet(
                 f"color: {rouge}; font-weight: bold;")
         else:
             self.bouton_payee.setText("Marquer payée")
-            complet = mode and date
+            # Seule une facture émise attend un règlement : un brouillon
+            # s'émet d'abord, une facture annulée ne se paie plus. Le bouton
+            # ne se met pas en vert pour un geste qu'il refusera.
+            pret = mode and date and self.facture.statut == "émise"
             self.bouton_payee.setStyleSheet(
-                f"color: {vert}; font-weight: bold;" if complet else "")
+                f"color: {vert}; font-weight: bold;" if pret else "")
 
     def basculer_paiement(self) -> None:
         """Marquer payée, ou défaire ce règlement — avec confirmation."""
@@ -679,11 +681,21 @@ class EditeurFacture(QWidget):
             alerter(self, "Facture en brouillon",
                     "Émettez d'abord la facture avant de la marquer payée.")
             return
+        if self.facture.statut == "annulée":
+            alerter(self, "Facture annulée",
+                    "Cette facture a été annulée par un avoir : elle n'attend "
+                    "plus de règlement.")
+            return
         from datetime import date as _date
+        # Le mode et la date viennent des champs : sans cette reprise, le
+        # règlement affiché à l'écran serait perdu au moment même où on le
+        # valide, et la facture porterait la date du jour à sa place.
+        self._collecter()
         self.facture.statut = "payée"
         if not self.facture.date_paiement:
+            from PySide6.QtCore import QDate
             self.facture.date_paiement = _date.today().isoformat()
-            self.date_paiement.setDate(self.date_paiement.date().currentDate())
+            self.date_paiement.setDate(QDate.currentDate())
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
         self.enregistre.emit()
