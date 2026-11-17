@@ -188,3 +188,6 @@ Sauvegardes/
 Sauvegardes.zip
 .DS_Store
 *.rar
+
+# Carte du projet, régénérée à la demande : une vue, pas une source.
+CARTE.md

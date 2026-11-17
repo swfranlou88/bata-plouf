@@ -418,6 +418,14 @@ L'installateur ne resservira qu'en cas de réparation ou de changement de Mac.
     uv run python outils/verifier_metier.py         les règles métier tiennent
     uv run python outils/verifier_impression.py     l'encre tombe dans les marges
 
+Et pour s'y retrouver dans le code :
+
+    uv run python outils/carte.py                   dresse CARTE.md
+
+`CARTE.md` liste chaque module, son rôle, ses fonctions et leurs numéros de
+ligne, avec les conventions du projet. Elle n'est pas versionnée : c'est une
+vue du code à un instant donné, qu'on refait plutôt que de corriger.
+
 Le troisième refait un chantier complet et vérifie les invariants. Il tourne
 aussi à chaque poussée, via `.github/workflows/controler.yml`.
 
