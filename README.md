@@ -273,6 +273,13 @@ quatre façons :
 La somme des factures retombe exactement sur le marché, au centime et taux de
 TVA par taux. C'est l'invariant que contrôle `outils/verifier_metier.py`.
 
+Le règlement se saisit en deux champs — mode et date — et l'un appelle
+l'autre : renseigner la date **encadre le mode en vert**, et inversement. Les
+deux remplis, le bouton **Marquer payée** passe au vert. Une fois la facture
+payée, il devient **Enlever le paiement de la facture**, en rouge : il défait
+au lieu d'avancer. Il demande confirmation, puis efface le mode et la date et
+remet la facture en attente.
+
 **Une facture émise n'est plus modifiable ni supprimable** — obligation
 comptable. La correction passe par un **avoir**, qui reprend les lignes au
 négatif.

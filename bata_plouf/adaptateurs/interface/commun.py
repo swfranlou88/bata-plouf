@@ -590,6 +590,30 @@ def teinte_modifiee(palette=None) -> str:
             else TEINTE_MODIFIEE_CLAIRE)
 
 
+# Le vert d'un champ qui attend d'être rempli, et le rouge d'un geste qui
+# défait. Deux nuances chacun : sur fond sombre il faut les éclaircir.
+TEINTE_ATTENTE_SOMBRE, TEINTE_ATTENTE_CLAIRE = "#4caf7d", "#1e7a4c"
+TEINTE_DEFAIRE_SOMBRE, TEINTE_DEFAIRE_CLAIRE = "#e8705f", "#b3382a"
+
+
+def _sombre(palette=None) -> bool:
+    if palette is None:
+        palette = QApplication.palette()
+    return palette.color(QPalette.ColorRole.Window).lightness() < 128
+
+
+def teinte_attente(palette=None) -> str:
+    """Le vert d'un champ qu'il reste à remplir pour aboutir."""
+    return (TEINTE_ATTENTE_SOMBRE if _sombre(palette)
+            else TEINTE_ATTENTE_CLAIRE)
+
+
+def teinte_defaire(palette=None) -> str:
+    """Le rouge d'un bouton qui annule plutôt qu'il n'avance."""
+    return (TEINTE_DEFAIRE_SOMBRE if _sombre(palette)
+            else TEINTE_DEFAIRE_CLAIRE)
+
+
 class Discret(QLabel):
     """Un texte de second plan, lisible en thème clair comme en sombre.
 

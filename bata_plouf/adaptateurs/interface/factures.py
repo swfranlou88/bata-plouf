@@ -27,7 +27,7 @@ from .commun import (
     CENTRE, Colonne, DROITE, alerter, barre, bouton, bouton_copier_adresse,
     champ_date, champ_entier, champ_texte, cle_numero, confirmer, discret,
     informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
-    rendre_cherchable, titre, valeur_date,
+    rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TOTAL, COL_TVA,
@@ -278,6 +278,11 @@ class EditeurFacture(QWidget):
         self.statut = QLabel(facture.statut)
         self.mode_paiement = liste_deroulante(MODES_PAIEMENT, facture.mode_paiement)
         self.date_paiement = champ_date(facture.date_paiement, optionnel=True)
+        self.bouton_payee = bouton("Marquer payée", self.basculer_paiement)
+        # L'un renseigné appelle l'autre : on le dit en vert plutôt que de
+        # laisser un règlement à moitié saisi.
+        self.mode_paiement.currentIndexChanged.connect(self._eclairer_reglement)
+        self.date_paiement.dateChanged.connect(self._eclairer_reglement)
 
         for widget in (self.echeance,):
             widget.valueChanged.connect(self._recalculer)
@@ -370,7 +375,7 @@ class EditeurFacture(QWidget):
             bouton("Supprimer la ligne", self.supprimer_ligne),
             "-",
             bouton("Émettre la facture", self.emettre, principal=True),
-            bouton("Marquer payée", self.marquer_payee),
+            self.bouton_payee,
             bouton("Créer un avoir", self.creer_avoir),
         )
 
@@ -440,6 +445,66 @@ class EditeurFacture(QWidget):
     def _client_courant(self):
         return self.depot.client(self.client.currentData() or "")
 
+    # --- règlement --------------------------------------------------------
+
+    def _reglement_renseigne(self) -> tuple[bool, bool]:
+        """Le mode et la date sont-ils renseignés ?"""
+        return (bool(self.mode_paiement.currentText().strip()),
+                bool(valeur_date(self.date_paiement)))
+
+    def _eclairer_reglement(self) -> None:
+        """Vert sur celui qui manque, vert sur le bouton quand les deux sont là.
+
+        Un règlement à moitié saisi ne se voit pas : la date est là, le mode
+        ne l'est pas, et la facture reste impayée sans qu'on sache pourquoi.
+        """
+        mode, date = self._reglement_renseigne()
+        vert = teinte_attente(self.palette())
+        attente = f"border: 1px solid {vert}; border-radius: 3px;"
+        # Chacun s'allume quand l'autre est rempli et que lui ne l'est pas.
+        self.mode_paiement.setStyleSheet("" if mode or not date else attente)
+        self.date_paiement.setStyleSheet("" if date or not mode else attente)
+
+        payee = self.facture.statut == "payée"
+        if payee:
+            self.bouton_payee.setText("Enlever le paiement de la facture")
+            rouge = teinte_defaire(self.palette())
+            self.bouton_payee.setStyleSheet(
+                f"color: {rouge}; font-weight: bold;")
+        else:
+            self.bouton_payee.setText("Marquer payée")
+            complet = mode and date
+            self.bouton_payee.setStyleSheet(
+                f"color: {vert}; font-weight: bold;" if complet else "")
+
+    def basculer_paiement(self) -> None:
+        """Marquer payée, ou défaire ce règlement — avec confirmation."""
+        if self.facture.statut == "payée":
+            self._defaire_paiement()
+            return
+        self.marquer_payee()
+
+    def _defaire_paiement(self) -> None:
+        regle = date_fr(self.facture.date_paiement)
+        if not confirmer(
+                self, "Enlever le paiement",
+                f"La facture {self.facture.numero} ne sera plus marquée payée"
+                + (f" (réglée le {regle})" if regle else "") + ".\n\n"
+                "Le mode de règlement et la date seront effacés, et la "
+                "facture repassera en attente de paiement. Continuer ?"):
+            return
+        self.facture.statut = "émise"
+        self.facture.date_paiement = ""
+        self.facture.mode_paiement = ""
+        self.mode_paiement.setCurrentIndex(0)
+        self.date_paiement.setDate(self.date_paiement.minimumDate())
+        self.depot.enregistrer_facture(self.facture)
+        self._appliquer_verrou()
+        self.enregistre.emit()
+        informer(self, "Paiement enlevé",
+                 f"La facture {self.facture.numero} est de nouveau en attente "
+                 "de règlement.")
+
     # --- verrou comptable ------------------------------------------------
 
     def _appliquer_verrou(self) -> None:
@@ -462,6 +527,7 @@ class EditeurFacture(QWidget):
         self.statut.setText(self.facture.statut
                             + (" — en retard" if self.facture.en_retard else ""))
         self.groupe_marche.setVisible(bool(self.facture.devis_id))
+        self._eclairer_reglement()
 
         if self.facture.type == "avoir":
             self.avertissement.setText(
