@@ -41,7 +41,7 @@ class DialogueSecrets(QDialog):
         self.jeton = champ_texte(secrets[environnement.JETON], "github_pat_…")
         self.jeton.setEchoMode(QLineEdit.EchoMode.Password)
         self.phrase = champ_texte(secrets[environnement.PHRASE],
-                                  "quatre mots qui tiennent debout")
+                                  "facultative — laissez vide pour ne pas chiffrer")
         self.phrase.setEchoMode(QLineEdit.EchoMode.Password)
         self.confirmation = champ_texte("", "la même, pour être sûr")
         self.confirmation.setEchoMode(QLineEdit.EchoMode.Password)
@@ -51,12 +51,15 @@ class DialogueSecrets(QDialog):
             self.confirmation.setText(secrets[environnement.PHRASE])
 
         explication = QLabel(
-            "Une fois par mois, au lancement, le logiciel dépose une copie "
-            "chiffrée de vos données sur GitHub. Le fichier y est public : "
-            "c'est la phrase de passe, et elle seule, qui le rend illisible.\n\n"
-            "<b>Notez cette phrase ailleurs qu'ici.</b> Personne ne peut la "
-            "retrouver — ni GitHub, ni le logiciel, ni la personne qui l'a "
-            "écrit. Sans elle, les sauvegardes ne se rouvrent pas.")
+            "Une fois par mois, au lancement, le logiciel dépose une copie de "
+            "vos données dans un dépôt GitHub privé.\n\n"
+            "La phrase de passe est <b>facultative</b> : le dépôt étant privé, "
+            "elle ajoute une seconde serrure plutôt qu'elle n'en tient lieu. "
+            "Laissée vide, l'archive part telle quelle et se rouvre d'un "
+            "double-clic.\n\n"
+            "Si vous en mettez une, <b>notez-la ailleurs qu'ici</b> : personne "
+            "ne peut la retrouver, et sans elle les sauvegardes ne se rouvrent "
+            "pas.")
         explication.setWordWrap(True)
         explication.setTextFormat(Qt.TextFormat.RichText)
 
@@ -65,6 +68,9 @@ class DialogueSecrets(QDialog):
         formulaire.addRow("Jeton d'écriture", self.jeton)
         formulaire.addRow("Phrase de passe", self.phrase)
         formulaire.addRow("Confirmation", self.confirmation)
+        formulaire.addRow("", discret(
+            "Sans phrase, la sauvegarde part en clair : seul l'accès à votre "
+            "compte GitHub la protège."))
 
         boutons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                    | QDialogButtonBox.StandardButton.Cancel)
@@ -94,7 +100,8 @@ class DialogueSecrets(QDialog):
             alerter(self, "Jeton manquant",
                     "Sans jeton, le logiciel ne peut rien déposer sur GitHub.")
             return
-        faute = reproche(self.phrase.text())
+        # Vide, c'est un choix ; trop courte, c'est une étourderie.
+        faute = reproche(self.phrase.text()) if self.phrase.text() else ""
         if faute:
             alerter(self, "Phrase de passe", faute)
             return
@@ -194,22 +201,30 @@ class DialogueRestaurer(QDialog):
 
 
 def rapatrier(parent, depot, nom: str) -> Path | None:
-    """Télécharge et déchiffre une sauvegarde ; rend le zip en clair."""
-    secrets = environnement.lire(depot.racine)
-    phrase = secrets[environnement.PHRASE]
-    if not phrase:
-        phrase, accepte = QInputDialog.getText(
-            parent, "Phrase de passe",
-            "Phrase de passe de la sauvegarde :", QLineEdit.EchoMode.Password)
-        if not accepte or not phrase:
-            return None
+    """Télécharge la sauvegarde, la déchiffre s'il le faut, rend le zip.
 
+    Le nom dit la forme du fichier — « .zip.enc » ou « .zip » —, et les deux
+    se côtoient dès qu'on a changé d'avis en cours de route. On ne demande
+    donc la phrase de passe que pour celles qui en ont une.
+    """
+    secrets = environnement.lire(depot.racine)
     abri = Path(tempfile.mkdtemp(prefix="bata-plouf-restauration-"))
     try:
-        chiffre = sauvegarde_en_ligne.telecharger(
+        venu = sauvegarde_en_ligne.telecharger(
             sauvegarde_mensuelle.depot_vise(depot),
             secrets[environnement.JETON], nom, abri / nom)
-        return dechiffrer_fichier(chiffre, abri / "sauvegarde.zip", phrase)
+        if not nom.endswith(".enc"):
+            return venu
+
+        phrase = secrets[environnement.PHRASE]
+        if not phrase:
+            phrase, accepte = QInputDialog.getText(
+                parent, "Phrase de passe",
+                f"Phrase de passe de {nom} :", QLineEdit.EchoMode.Password)
+            if not accepte or not phrase:
+                shutil.rmtree(abri, ignore_errors=True)
+                return None
+        return dechiffrer_fichier(venu, abri / "sauvegarde.zip", phrase)
     except (ErreurSauvegarde, ErreurCoffre) as erreur:
         shutil.rmtree(abri, ignore_errors=True)
         alerter(parent, "Restauration impossible", str(erreur))

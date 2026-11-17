@@ -33,10 +33,14 @@ def depot_vise(depot) -> str:
 
 
 def prete(depot) -> bool:
-    """A-t-on de quoi sauvegarder sans rien demander ?"""
+    """A-t-on de quoi sauvegarder sans rien demander ?
+
+    Le dépôt et le jeton suffisent. La phrase de passe est facultative :
+    le dépôt est privé, elle n'est qu'une seconde serrure. Sans elle,
+    l'archive part telle quelle — et son nom le dit.
+    """
     secrets = environnement.lire(depot.racine)
-    return bool(depot_vise(depot) and secrets[environnement.JETON]
-                and secrets[environnement.PHRASE])
+    return bool(depot_vise(depot) and secrets[environnement.JETON])
 
 
 def due(depot, jour: date | None = None) -> bool:
@@ -48,30 +52,35 @@ def due(depot, jour: date | None = None) -> bool:
 
 
 def sauvegarder(depot, jour: date | None = None) -> str:
-    """Archive, chiffre, dépose, et note le mois. Rend l'adresse du fichier.
+    """Archive, chiffre s'il y a une phrase, dépose, et note le mois.
 
-    Le fichier en clair ne touche jamais le disque de façon durable : il naît
-    dans un dossier temporaire, et celui-ci disparaît dans tous les cas —
-    même si le dépôt échoue.
+    Le fichier ne touche jamais le disque de façon durable : il naît dans un
+    dossier temporaire, et celui-ci disparaît dans tous les cas — même si le
+    dépôt échoue.
     """
     secrets = environnement.lire(depot.racine)
     phrase = secrets[environnement.PHRASE]
     jeton = secrets[environnement.JETON]
     cible = depot_vise(depot)
 
-    faute = coffre.reproche(phrase)
-    if faute:
-        raise ErreurSauvegarde(faute)
+    # Une phrase trop courte est refusée, une phrase absente non : c'est le
+    # choix de ne pas chiffrer, pas une étourderie à moitié faite.
+    if phrase:
+        faute = coffre.reproche(phrase)
+        if faute:
+            raise ErreurSauvegarde(faute)
 
     # ignore_cleanup_errors : le dossier part de toute façon au prochain
     # ménage du système, et un échec d'effacement ne doit pas faire
     # croire que la sauvegarde a raté alors qu'elle est déposée.
     with tempfile.TemporaryDirectory(prefix="bata-plouf-sauvegarde-",
                                      ignore_cleanup_errors=True) as atelier:
-        clair = archive.ecrire(depot, Path(atelier) / "sauvegarde.zip")
-        chiffre = coffre.chiffrer_fichier(clair, Path(atelier) / "sauvegarde.enc",
-                                          phrase)
-        adresse = envoi.deposer(cible, jeton, chiffre, envoi.nom_du_mois(jour))
+        envoyer = archive.ecrire(depot, Path(atelier) / "sauvegarde.zip")
+        if phrase:
+            envoyer = coffre.chiffrer_fichier(
+                envoyer, Path(atelier) / "sauvegarde.enc", phrase)
+        adresse = envoi.deposer(cible, jeton, envoyer,
+                                envoi.nom_du_mois(jour, chiffre=bool(phrase)))
 
     societe = depot.societe
     societe.dernier_mois_sauvegarde = mois_courant(jour)
@@ -84,14 +93,14 @@ def etat(depot) -> str:
     if not depot_vise(depot):
         return "Aucun dépôt indiqué : rien ne part."
     secrets = environnement.lire(depot.racine)
-    manque = [nom for nom, cle in (("la phrase de passe", environnement.PHRASE),
-                                   ("le jeton GitHub", environnement.JETON))
-              if not secrets[cle]]
-    if manque:
-        return "Il manque " + " et ".join(manque) + "."
+    if not secrets[environnement.JETON]:
+        return "Il manque le jeton GitHub."
+    forme = ("chiffrée" if secrets[environnement.PHRASE]
+             else "en clair, sans phrase de passe")
     fait = (getattr(depot.societe, "dernier_mois_sauvegarde", "") or "").strip()
+    ou = f"Vers {depot_vise(depot)}, {forme}"
     if not fait:
-        return f"Vers {depot_vise(depot)} — aucune sauvegarde déposée pour l'instant."
+        return f"{ou} — aucune sauvegarde déposée pour l'instant."
     if fait == mois_courant():
-        return f"Vers {depot_vise(depot)} — à jour, sauvegarde de {fait} déposée."
-    return f"Vers {depot_vise(depot)} — dernière sauvegarde : {fait}."
+        return f"{ou} — à jour, sauvegarde de {fait} déposée."
+    return f"{ou} — dernière sauvegarde : {fait}."

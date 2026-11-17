@@ -319,11 +319,18 @@ l'incendie, le vol et la panne emportent les deux. Une fois par mois, au
 premier lancement, le logiciel dépose donc une copie **chiffrée** dans une
 release GitHub — 832 Ko pour six cents clients et quatre cents pièces.
 
-Le dépôt est **privé**, et le fichier **chiffré** : il faut franchir les deux
-portes. **AES-256-GCM**, clé dérivée par **scrypt réglé à 256 Mo par essai** —
-une demi-seconde à l'ouverture, un mur pour qui voudrait essayer des millions
-de mots de passe hors ligne. Les réglages voyagent en clair dans l'en-tête
-mais sont authentifiés : personne ne peut les abaisser en chemin.
+Le dépôt est **privé** : c'est l'accès au compte GitHub qui protège les
+données. Une **phrase de passe est possible en plus**, et facultative — une
+seconde serrure, pas la seule. Avec elle : **AES-256-GCM**, clé dérivée par
+**scrypt réglé à 256 Mo par essai**, une demi-seconde à l'ouverture et un mur
+pour qui voudrait essayer des millions de mots de passe hors ligne ; les
+réglages voyagent en clair dans l'en-tête mais authentifiés, personne ne peut
+les abaisser en chemin. Sans elle, l'archive part telle quelle.
+
+Le nom du fichier dit lequel des deux c'est — `bata-plouf-2026-11.zip.enc` ou
+`bata-plouf-2026-11.zip` — et les deux se côtoient sans se gêner si l'on
+change d'avis en route : la restauration ne demande la phrase que pour les
+fichiers qui en ont une.
 
 Phrase de passe et jeton GitHub vivent dans `sauvegarde.env`, à côté des
 données et **jamais dedans** — ils ne partent donc dans aucune archive.
@@ -355,9 +362,10 @@ Il accepte aussi un fichier local ou une adresse, et rend un `.zip` ordinaire.
 Sur un dépôt privé, il lui faut le jeton — variable `JETON_GITHUB`, ou le
 `sauvegarde.env` de la machine.
 
-**La trousse de secours**, à garder ailleurs qu'en ligne : la phrase de passe,
-le jeton, et le nom du dépôt. Avec ces trois-là, une sauvegarde se rouvre
-depuis n'importe où. Sans la phrase, personne ne le peut.
+**La trousse de secours**, à garder ailleurs qu'en ligne : le jeton, le nom du
+dépôt, et la phrase de passe s'il y en a une. Avec cela, une sauvegarde se
+rouvre depuis n'importe où ; sans la phrase, une sauvegarde chiffrée est
+perdue pour tout le monde.
 
 **La phrase de passe ne se récupère pas.** Ni GitHub, ni le logiciel, ni
 personne ne la connaît. Notée ailleurs, ou les sauvegardes sont perdues.

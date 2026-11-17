@@ -1,4 +1,4 @@
-"""Déposer la sauvegarde chiffrée dans une release GitHub.
+"""Déposer la sauvegarde mensuelle dans une release GitHub.
 
 Une sauvegarde qui dort sur le même disque que les données ne protège de
 rien : l'incendie, le vol et la panne de disque emportent les deux. Celle-ci
@@ -33,10 +33,15 @@ class ErreurSauvegarde(Exception):
     """Ce qui empêche la sauvegarde d'arriver à destination."""
 
 
-def nom_du_mois(jour: date | None = None) -> str:
-    """« bata-plouf-2026-11.zip.enc » : un fichier par mois, écrasé s'il existe."""
+def nom_du_mois(jour: date | None = None, chiffre: bool = True) -> str:
+    """Un fichier par mois, écrasé s'il existe.
+
+    L'extension dit ce qu'il est : « bata-plouf-2026-11.zip.enc » pour une
+    sauvegarde chiffrée, « .zip » pour une archive ordinaire. Celui qui la
+    rapatrie dans trois ans doit pouvoir le savoir sans l'ouvrir.
+    """
     jour = jour or date.today()
-    return f"bata-plouf-{jour:%Y-%m}.zip.enc"
+    return f"bata-plouf-{jour:%Y-%m}.zip" + (".enc" if chiffre else "")
 
 
 def _demander(url: str, jeton: str, methode: str = "GET", corps=None,

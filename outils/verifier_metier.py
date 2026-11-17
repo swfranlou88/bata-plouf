@@ -660,6 +660,11 @@ def main() -> int:
              and relu[environnement.DEPOT] == "compte/sauvegardes")
     verifier("et ne part dans aucune archive",
              environnement.NOM_FICHIER not in archive.FICHIERS_RACINE)
+    from bata_plouf.adaptateurs import sauvegarde_en_ligne as envoi
+    verifier("le nom dit si le fichier est chiffré",
+             envoi.nom_du_mois(date_classe(2026, 11, 2)).endswith("2026-11.zip.enc")
+             and envoi.nom_du_mois(date_classe(2026, 11, 2), chiffre=False)
+             .endswith("2026-11.zip"))
     verifier("la sauvegarde se mesure au mois civil",
              mensuelle.mois_courant(date_classe(2026, 11, 30))
              != mensuelle.mois_courant(date_classe(2026, 12, 1)))

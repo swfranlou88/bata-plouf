@@ -98,6 +98,16 @@ def main() -> int:
                else source.name + ".zip")
         destination = Path.cwd() / nom
 
+        if not source.read_bytes()[:8] == b"BPLOUF1\n":
+            # Une sauvegarde déposée sans phrase de passe : c'est déjà un zip.
+            if destination.resolve() != source.resolve():
+                destination.write_bytes(source.read_bytes())
+            print(f"{destination} — {destination.stat().st_size // 1024} Ko")
+            print("Cette sauvegarde n'est pas chiffrée : c'est une archive "
+                  "ordinaire, à reprendre depuis Paramètres → « Importer un "
+                  "zip ».")
+            return 0
+
         phrase = getpass.getpass("Phrase de passe : ")
         print("Déchiffrement… (une seconde, la dérivation de la clé est lente "
               "par construction)")
