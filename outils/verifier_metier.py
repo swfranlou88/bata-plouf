@@ -405,14 +405,15 @@ def main() -> int:
 
     verifier("et il finit sur le total TTC",
              "RESTE DÛ" not in page and "SOLDE" not in page)
-    # La phrase chiffrée, à ne pas confondre avec les conditions de paiement
-    # du profil, qui parlent d'acompte sans jamais donner de montant.
-    verifier("l'acompte se dit en toutes lettres, avec son montant",
-             "% à la commande :" in page and "solde de" in page,
+    # Une ligne à remplir à la main, pas un montant calculé : l'acompte se
+    # négocie au moment de signer, et les conditions l'annoncent déjà.
+    verifier("un devis laisse une ligne pour l'acompte",
+             "Acompte : ___" in page,
              "acompte du devis d'essai : " + str(simple.acompte_pct))
-
-    verifier("une facture ne réclame pas d'acompte",
-             "% à la commande :" not in facture_classique)
+    verifier("sans montant calculé",
+             "% à la commande :" not in page and "solde de" not in page)
+    verifier("une facture n'en laisse pas",
+             "Acompte : ___" not in facture_classique)
     totale.statut = "payée"
     totale.date_paiement = "2026-03-04"
     verifier("une facture réglée se dit acquittée",

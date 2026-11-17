@@ -355,13 +355,10 @@ def _mentions(ctx: Contexte) -> str:
                         "article 283-2 nonies du CGI.")
     if (not ctx.est_facture and g.afficher_acompte
             and getattr(d, "acompte_pct", 0)):
-        # Le cadre des totaux finit sur le TTC : l'acompte et le solde se
-        # disent ici, avec leurs montants, pour que le client sache ce qu'il
-        # avance à la commande et ce qui restera.
-        morceaux.append(
-            f"Acompte de {nombre(d.acompte_pct)} % à la commande : "
-            f"{euros(ctx.totaux.acompte)} — solde de "
-            f"{euros(ctx.totaux.solde)} à la fin des travaux.")
+        # Les conditions annoncent déjà l'acompte : ne reste qu'une ligne à
+        # remplir à la main, le jour où le chèque est remis. Pas de montant
+        # calculé ici — il se négocie au moment de signer.
+        morceaux.append("Acompte : " + "_" * 22)
     if ctx.est_facture and getattr(d, "statut", "") == "payée":
         # Le cadre des totaux ne porte plus de « reste dû » : c'est ici que
         # se lit qu'il n'y a plus rien à payer.

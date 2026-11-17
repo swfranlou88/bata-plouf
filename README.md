@@ -160,6 +160,11 @@ d'un poste à l'autre, elle donne la liste de courses du chantier ; les heures
 de machine y vont à part, car une heure de tractopelle n'est pas une heure
 d'homme.
 
+Sous les mentions d'un devis, une ligne vide : « Acompte : ______ ». Pas de
+montant calculé — il se négocie au moment de signer, et les conditions
+l'annoncent déjà. C'est au stylo qu'on l'écrit, le jour où le chèque est
+remis.
+
 La liste de courses porte les **prix d'achat** et leur total : ce que la
 matière coûtera chez le fournisseur, pas ce qu'elle se revend. Un matériau
 dont la fiche n'a pas de prix d'achat est signalé, et le total annoncé comme
