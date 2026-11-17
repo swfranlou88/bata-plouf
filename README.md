@@ -306,6 +306,11 @@ L'installateur ne resservira qu'en cas de réparation ou de changement de Mac.
     uv run python outils/verifier_architecture.py   le domaine reste isolé
     uv run python outils/verifier_modules.py        tout s'importe
     uv run python outils/verifier_metier.py         les règles métier tiennent
+    uv run python outils/verifier_impression.py     l'encre tombe dans les marges
 
-Le dernier refait un chantier complet et vérifie les invariants. Il tourne
+Le troisième refait un chantier complet et vérifie les invariants. Il tourne
 aussi à chaque poussée, via `.github/workflows/controler.yml`.
+
+Le dernier rend un devis en PDF et mesure où l'encre commence et finit sur la
+feuille. Un document peut être juste en HTML et faux sur le papier : c'est la
+peinture sur l'imprimante qui le place, et rien d'autre ne le dirait.

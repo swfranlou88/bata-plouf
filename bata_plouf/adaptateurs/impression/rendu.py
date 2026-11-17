@@ -42,7 +42,13 @@ class RenduDocument:
                                QPageLayout.Unit.Millimeter)
 
         dpi = printer.resolution()
-        zone = QRectF(printer.pageLayout().paintRectPixels(dpi))
+        # La zone imprimable, ramenée à son coin : sur une imprimante comme
+        # dans un PDF, Qt place déjà l'origine du peintre à l'intérieur des
+        # marges. Peindre à paintRect.left() les compterait une seconde fois —
+        # le document glissait vers la droite d'autant que la marge gauche, et
+        # il ne restait rien à droite.
+        imprimable = QRectF(printer.pageLayout().paintRectPixels(dpi))
+        zone = QRectF(0, 0, imprimable.width(), imprimable.height())
         pied = mm_en_px(HAUTEUR_PIED_MM, dpi) if self.gabarit.afficher_pied else 0
         corps = QRectF(0, 0, zone.width(), zone.height() - pied)
 
@@ -168,7 +174,6 @@ class RenduDocument:
                     printer.newPage()
                 peintre.save()
                 peintre.setPen(NOIR)
-                peintre.translate(zone.left(), zone.top())
                 peintre.setClipRect(QRectF(0, 0, corps.width(), corps.height()))
                 peintre.translate(0, -index * corps.height())
                 doc.drawContents(peintre)
