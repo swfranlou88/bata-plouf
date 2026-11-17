@@ -30,6 +30,8 @@ def verifier(intitule: str, condition: bool, detail: str = "") -> None:
 
 def main() -> int:
     from bata_plouf.adaptateurs.depot_fichiers import DepotFichiers, ErreurReference
+    from datetime import date as date_classe
+
     from bata_plouf.adaptateurs.import_batappli import (
         deviner_correspondance, en_nombre, sonder,
     )
@@ -617,6 +619,50 @@ def main() -> int:
     verifier("une fiche sans adresse ne rend rien à recopier",
              adresse_en_ligne(Client(nom="Mougel")) == "")
     verifier("ni une absence de fiche", adresse_en_ligne(None) == "")
+
+    print("\nSauvegarde chiffrée")
+    from bata_plouf.adaptateurs import coffre, environnement
+    from bata_plouf.adaptateurs import sauvegarde_mensuelle as mensuelle
+
+    phrase = "quatre mots qui tiennent debout"
+    secret = b"PK\x03\x04 des noms, des adresses, des telephones"
+    blob = coffre.chiffrer(secret, phrase)
+    verifier("ce qui sort est illisible",
+             secret[4:] not in blob and blob.startswith(b"BPLOUF1\n"))
+    verifier("et se rouvre avec la phrase",
+             coffre.dechiffrer(blob, phrase) == secret)
+    verifier("deux chiffrements du même fichier diffèrent",
+             coffre.chiffrer(secret, phrase) != blob)
+
+    for intitule, abime in (
+            ("une phrase fausse est refusée", lambda: coffre.dechiffrer(blob, phrase + "x")),
+            ("un octet changé est refusé",
+             lambda: coffre.dechiffrer(blob[:60] + bytes([blob[60] ^ 1]) + blob[61:], phrase)),
+            ("un réglage affaibli en chemin est refusé",
+             lambda: coffre.dechiffrer(blob[:9] + b"\x0a" + blob[10:], phrase)),
+            ("un fichier étranger est reconnu comme tel",
+             lambda: coffre.dechiffrer(b"PK\x03\x04 pas une sauvegarde", phrase))):
+        try:
+            abime()
+            verifier(intitule, False, "accepté")
+        except coffre.ErreurCoffre:
+            verifier(intitule, True)
+    verifier("une phrase trop courte est écartée avant de chiffrer",
+             bool(coffre.reproche("trois mots")) and not coffre.reproche(phrase))
+
+    # Les secrets vivent à côté des données, jamais dedans.
+    environnement.ecrire(atelier, {environnement.PHRASE: phrase,
+                                   environnement.JETON: "github_pat_essai",
+                                   environnement.DEPOT: "compte/sauvegardes"})
+    relu = environnement.lire(atelier)
+    verifier("le fichier d'environnement se relit",
+             relu[environnement.PHRASE] == phrase
+             and relu[environnement.DEPOT] == "compte/sauvegardes")
+    verifier("et ne part dans aucune archive",
+             environnement.NOM_FICHIER not in archive.FICHIERS_RACINE)
+    verifier("la sauvegarde se mesure au mois civil",
+             mensuelle.mois_courant(date_classe(2026, 11, 30))
+             != mensuelle.mois_courant(date_classe(2026, 12, 1)))
 
     print("\nFormats et import")
     verifier("montant français", euros(1234.5) == "1 234,50 €", euros(1234.5))

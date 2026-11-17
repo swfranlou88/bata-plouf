@@ -1,0 +1,141 @@
+"""Déposer la sauvegarde chiffrée dans une release GitHub.
+
+Une sauvegarde qui dort sur le même disque que les données ne protège de
+rien : l'incendie, le vol et la panne de disque emportent les deux. Celle-ci
+part ailleurs, une fois par mois, chiffrée avant de quitter la machine.
+
+Trois choix qui méritent une phrase :
+
+  — **une seule release, étiquetée « sauvegardes »**, qui porte un fichier
+    par mois. Une release par mois noierait les vraies versions du logiciel ;
+  — **marquée pré-version**. GitHub exclut les pré-versions de
+    « releases/latest », qui est exactement là où l'application va chercher
+    ses mises à jour : sans cela, la sauvegarde de novembre deviendrait la
+    « dernière version » et le logiciel essaierait de l'installer ;
+  — **un dépôt séparé de celui du logiciel**. Le jeton d'écriture dort sur la
+    machine de l'utilisateur ; s'il tombe entre d'autres mains, il ne doit
+    pas permettre de publier une fausse mise à jour que toutes les
+    installations iraient chercher toutes seules.
+"""
+
+import json
+import urllib.error
+import urllib.request
+from datetime import date
+from pathlib import Path
+
+API = "https://api.github.com"
+ETIQUETTE = "sauvegardes"
+DELAI = 60  # secondes
+
+
+class ErreurSauvegarde(Exception):
+    """Ce qui empêche la sauvegarde d'arriver à destination."""
+
+
+def nom_du_mois(jour: date | None = None) -> str:
+    """« bata-plouf-2026-11.zip.enc » : un fichier par mois, écrasé s'il existe."""
+    jour = jour or date.today()
+    return f"bata-plouf-{jour:%Y-%m}.zip.enc"
+
+
+def _demander(url: str, jeton: str, methode: str = "GET", corps=None,
+              type_contenu: str = "application/json"):
+    requete = urllib.request.Request(url, method=methode, data=corps)
+    requete.add_header("Authorization", f"Bearer {jeton}")
+    requete.add_header("Accept", "application/vnd.github+json")
+    requete.add_header("X-GitHub-Api-Version", "2022-11-28")
+    requete.add_header("User-Agent", "Bata-plouf")
+    if corps is not None:
+        requete.add_header("Content-Type", type_contenu)
+    try:
+        with urllib.request.urlopen(requete, timeout=DELAI) as reponse:
+            brut = reponse.read()
+            return json.loads(brut) if brut else {}
+    except urllib.error.HTTPError as erreur:
+        raise ErreurSauvegarde(_message(erreur)) from erreur
+    except (urllib.error.URLError, TimeoutError) as erreur:
+        raise ErreurSauvegarde(
+            f"GitHub est injoignable : {getattr(erreur, 'reason', erreur)}"
+        ) from erreur
+
+
+def _message(erreur: urllib.error.HTTPError) -> str:
+    """Traduire le code de GitHub en quelque chose qu'on peut corriger."""
+    if erreur.code == 401:
+        return "Jeton refusé par GitHub : il est faux, révoqué ou périmé."
+    if erreur.code == 403:
+        return ("Jeton sans le droit d'écrire sur ce dépôt. Il lui faut "
+                "« Contents : Read and write ».")
+    if erreur.code == 404:
+        return ("Dépôt introuvable, ou invisible pour ce jeton. Vérifiez le "
+                "nom « compte/dépôt » et les dépôts autorisés sur le jeton.")
+    if erreur.code == 422:
+        return "GitHub a refusé la demande : " + erreur.read().decode(
+            "utf-8", "replace")[:200]
+    return f"GitHub a répondu : {erreur.code}"
+
+
+def _release(depot: str, jeton: str) -> dict:
+    """La release des sauvegardes, créée au premier passage."""
+    try:
+        return _demander(f"{API}/repos/{depot}/releases/tags/{ETIQUETTE}", jeton)
+    except ErreurSauvegarde as erreur:
+        if "introuvable" not in str(erreur):
+            raise
+    corps = json.dumps({
+        "tag_name": ETIQUETTE,
+        "name": "Sauvegardes chiffrées",
+        "body": ("Sauvegardes mensuelles de Bata-plouf, chiffrées par phrase "
+                 "de passe (AES-256-GCM, clé dérivée par scrypt).\n\n"
+                 "Sans la phrase de passe, ces fichiers ne s'ouvrent pas.\n\n"
+                 "Marquée pré-version pour ne pas passer pour une version du "
+                 "logiciel : la mise à jour automatique ignore les "
+                 "pré-versions."),
+        "prerelease": True,
+    }).encode("utf-8")
+    return _demander(f"{API}/repos/{depot}/releases", jeton, "POST", corps)
+
+
+def deposer(depot: str, jeton: str, fichier: Path | str,
+            nom: str = "") -> str:
+    """Envoie le fichier chiffré et rend son adresse de téléchargement."""
+    depot = (depot or "").strip().strip("/")
+    if "/" not in depot:
+        raise ErreurSauvegarde(
+            "Le dépôt s'écrit « compte/nom », par exemple "
+            "« dupont/bata-plouf-sauvegardes ».")
+    if not (jeton or "").strip():
+        raise ErreurSauvegarde("Sans jeton GitHub, rien ne peut être déposé.")
+
+    fichier = Path(fichier)
+    nom = nom or fichier.name
+    release = _release(depot, jeton)
+
+    # Le fichier du mois existe peut-être déjà : on remplace, pour ne pas
+    # accumuler douze versions du même mois.
+    for piece in release.get("assets") or []:
+        if piece.get("name") == nom:
+            _demander(f"{API}/repos/{depot}/releases/assets/{piece['id']}",
+                      jeton, "DELETE")
+
+    adresse = (release.get("upload_url") or "").split("{")[0]
+    if not adresse:
+        raise ErreurSauvegarde("GitHub n'a pas dit où déposer le fichier.")
+    depose = _demander(f"{adresse}?name={nom}", jeton, "POST",
+                       fichier.read_bytes(), "application/octet-stream")
+    return depose.get("browser_download_url", "")
+
+
+def liste(depot: str, jeton: str) -> list[tuple[str, int, str]]:
+    """Ce qui est déjà en ligne : nom, taille, date — pour pouvoir le dire."""
+    try:
+        release = _demander(f"{API}/repos/{depot}/releases/tags/{ETIQUETTE}",
+                            jeton)
+    except ErreurSauvegarde as erreur:
+        if "introuvable" in str(erreur):
+            return []
+        raise
+    return sorted(((p.get("name", ""), int(p.get("size") or 0),
+                    (p.get("updated_at") or "")[:10])
+                   for p in release.get("assets") or []), reverse=True)

@@ -13,7 +13,7 @@ from .commun import (
     alerter, barre, bouton, champ_entier, champ_pourcent, champ_texte, confirmer,
     discret, informer, liste_deroulante, titre,
 )
-from ...adaptateurs import archive
+from ...adaptateurs import archive, sauvegarde_mensuelle
 from ...adaptateurs.systeme import ouvrir_dossier
 from .comptabilite import DialogueExportComptable
 from .mise_a_jour import DialogueMiseAJour
@@ -76,6 +76,8 @@ class VueParametres(QWidget):
         self.compte_tva_10 = champ_texte(comptes.get("10.0", ""), "445711")
         self.compte_tva_55 = champ_texte(comptes.get("5.5", ""), "445712")
 
+        self.etat_sauvegarde = discret(sauvegarde_mensuelle.etat(depot))
+        self.etat_sauvegarde.setWordWrap(True)
         self.depot_maj = champ_texte(s.depot_mises_a_jour, "compte/bata-plouf")
         self.mode_maj = liste_deroulante(
             ["auto", "demander", "jamais"], s.mises_a_jour or "auto")
@@ -154,6 +156,12 @@ class VueParametres(QWidget):
             ("Dépôt GitHub", self.depot_maj),
             ("Mises à jour", self.mode_maj),
             ("", barre(bouton("Rechercher une mise à jour", self._chercher_maj), "-")),
+        ]))
+        disposition.addWidget(self._groupe("Sauvegarde mensuelle en ligne", [
+            ("État", self.etat_sauvegarde),
+            ("", barre(bouton("Réglages…", self._regler_sauvegarde),
+                       bouton("Sauvegarder en ligne maintenant",
+                              self._sauvegarder_en_ligne), "-")),
         ]))
         disposition.addWidget(self._groupe("Données", [
             ("Dossier", self.dossier),
@@ -288,6 +296,18 @@ class VueParametres(QWidget):
         informer(self, "Import terminé", message)
         self.rafraichir()
         self.donnees_modifiees.emit()
+
+    def _regler_sauvegarde(self) -> None:
+        from .sauvegarde import regler
+
+        regler(self, self.depot)
+        self.etat_sauvegarde.setText(sauvegarde_mensuelle.etat(self.depot))
+
+    def _sauvegarder_en_ligne(self) -> None:
+        from .sauvegarde import sauvegarder_maintenant
+
+        sauvegarder_maintenant(self, self.depot)
+        self.etat_sauvegarde.setText(sauvegarde_mensuelle.etat(self.depot))
 
     def _chercher_maj(self) -> None:
         DialogueMiseAJour(self, self.depot_maj.text().strip()).exec()

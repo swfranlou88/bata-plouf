@@ -130,6 +130,15 @@ class Societe:
     # question une fois par jour · "jamais" coupe tout accès au réseau.
     mises_a_jour: str = "auto"
 
+    # --- sauvegarde mensuelle en ligne ---
+    # Dépôt où partent les sauvegardes chiffrées, « compte/nom ». Vide : rien
+    # ne part. La phrase de passe et le jeton ne sont pas ici : ils vivent
+    # dans sauvegarde.env, qui ne part dans aucune archive.
+    depot_sauvegardes: str = ""
+    # Le mois de la dernière sauvegarde déposée, « 2026-11 ». C'est lui qui
+    # décide s'il faut en faire une au lancement.
+    dernier_mois_sauvegarde: str = ""
+
     # --- comptabilité ---
     # Comptes du plan comptable général, modifiables : chaque cabinet a ses
     # habitudes, et un export qui ne tombe pas sur les bons comptes oblige le

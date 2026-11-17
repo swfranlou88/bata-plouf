@@ -3,5 +3,6 @@ name = "bata-plouf"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "cryptography>=46",
     "pyside6>=6.12.0",
 ]

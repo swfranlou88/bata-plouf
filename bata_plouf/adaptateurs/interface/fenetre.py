@@ -11,6 +11,7 @@ from datetime import date
 
 from .accueil import VueAccueil
 from .mise_a_jour import Chercheur, DialogueMiseAJour
+from ...adaptateurs import sauvegarde_mensuelle
 from .chantiers import FicheChantier, VueChantiers
 from .devis import EditeurDevis, VueDevis
 from .factures import DialogueFacturer, EditeurFacture, VueFactures
@@ -145,6 +146,36 @@ class FenetrePrincipale(QMainWindow):
         self._chercheur.echoue.connect(lambda _: None)  # un échec reste silencieux
         self._chercheur.start()
 
+    def sauvegarder_le_mois(self) -> None:
+        """La sauvegarde mensuelle, au lancement, sans rien demander.
+
+        Si le dépôt est réglé mais qu'il manque la phrase de passe ou le
+        jeton, la fenêtre les demande — une fois, puisqu'ils sont ensuite
+        rangés dans sauvegarde.env. Sans dépôt réglé, rien ne se passe : la
+        sauvegarde en ligne ne s'impose pas à qui n'en veut pas.
+        """
+        from .sauvegarde import Sauvegardeur, regler
+
+        societe = self.depot.societe
+        if not (societe.depot_sauvegardes or "").strip():
+            return
+        if not sauvegarde_mensuelle.prete(self.depot):
+            if not regler(self, self.depot):
+                return
+        if not sauvegarde_mensuelle.due(self.depot):
+            return
+
+        self._sauvegardeur = Sauvegardeur(self.depot, self)
+        self._sauvegardeur.fini.connect(
+            lambda _: self.statusBar().showMessage(
+                "Sauvegarde du mois déposée en ligne.", 8000))
+        # Un échec ne doit pas barrer l'écran au démarrage : il se lit dans
+        # les Paramètres, où l'état est écrit en toutes lettres.
+        self._sauvegardeur.echoue.connect(
+            lambda message: self.statusBar().showMessage(
+                "Sauvegarde en ligne impossible : " + message, 15000))
+        self._sauvegardeur.start()
+
     def _annoncer(self, version) -> None:
         """Signale la nouvelle version, et propose de l'installer tout de suite.
 
@@ -186,11 +217,19 @@ class FenetrePrincipale(QMainWindow):
             self.chercher_mise_a_jour(version)
 
     def closeEvent(self, evenement) -> None:
-        """Ne pas quitter pendant qu'une recherche de mise à jour tourne."""
+        """Ne pas quitter pendant qu'un fil travaille encore.
+
+        La recherche de mise à jour peut être interrompue : elle ne fait que
+        lire. La sauvegarde, non — on la laisse finir son dépôt, sinon GitHub
+        garde un fichier à moitié monté et le mois est noté pour rien.
+        """
         chercheur = getattr(self, "_chercheur", None)
         if chercheur is not None and chercheur.isRunning():
             chercheur.requestInterruption()
             chercheur.wait(12000)
+        sauvegardeur = getattr(self, "_sauvegardeur", None)
+        if sauvegardeur is not None and sauvegardeur.isRunning():
+            sauvegardeur.wait(30000)
         super().closeEvent(evenement)
 
     def _a_propos(self) -> None:

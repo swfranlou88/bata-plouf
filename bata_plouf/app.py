@@ -33,6 +33,7 @@ def lancer(racine: Path | str = DOSSIER_DEFAUT) -> int:
     fenetre = FenetrePrincipale(depot)
     fenetre.show()
     fenetre.verifier_en_arriere_plan()
+    fenetre.sauvegarder_le_mois()
 
     if depot.anomalies:
         QMessageBox.warning(

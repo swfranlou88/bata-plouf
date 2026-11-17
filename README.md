@@ -312,6 +312,45 @@ pas construire pour un autre système que le sien.
 Le script signe le bundle en « ad hoc », fichier par fichier : sans signature,
 Apple Silicon refuse de démarrer, et `codesign --deep` plante sur ce bundle.
 
+## Sauvegarde mensuelle en ligne
+
+Une sauvegarde sur le même disque que les données ne protège de rien :
+l'incendie, le vol et la panne emportent les deux. Une fois par mois, au
+premier lancement, le logiciel dépose donc une copie **chiffrée** dans une
+release GitHub — 832 Ko pour six cents clients et quatre cents pièces.
+
+Le fichier est public ; c'est la phrase de passe qui le rend illisible.
+**AES-256-GCM**, clé dérivée par **scrypt réglé à 256 Mo par essai** : une
+demi-seconde à l'ouverture, un mur pour qui voudrait essayer des millions de
+mots de passe hors ligne. Les réglages voyagent en clair dans l'en-tête mais
+sont authentifiés : personne ne peut les abaisser en chemin.
+
+Phrase de passe et jeton GitHub vivent dans `sauvegarde.env`, à côté des
+données et **jamais dedans** — ils ne partent donc dans aucune archive.
+Demandés une fois, au lancement, puis plus jamais.
+
+Trois précautions de mise en place :
+
+- **Un dépôt séparé de celui du logiciel.** Le jeton d'écriture dort sur la
+  machine de l'utilisateur ; s'il tombe entre d'autres mains, il ne doit pas
+  permettre de publier une fausse mise à jour que toutes les installations
+  iraient chercher toutes seules.
+- Un **jeton fin**, limité à ce dépôt, avec `Contents: Read and write`.
+- Une **seule release**, étiquetée `sauvegardes` et marquée pré-version, qui
+  porte un fichier par mois. GitHub exclut les pré-versions de
+  `releases/latest`, où le logiciel cherche ses mises à jour : sans cela la
+  sauvegarde de novembre passerait pour une version à installer.
+
+Pour rouvrir une sauvegarde, sans le logiciel et depuis n'importe quel Mac :
+
+    uv run python outils/dechiffrer_sauvegarde.py bata-plouf-2026-11.zip.enc
+
+Il accepte aussi une adresse de téléchargement, et rend un `.zip` ordinaire —
+celui qu'on glisse dans Paramètres → « Importer un zip ».
+
+**La phrase de passe ne se récupère pas.** Ni GitHub, ni le logiciel, ni
+personne ne la connaît. Notée ailleurs, ou les sauvegardes sont perdues.
+
 ## Publier une version
 
 **Le dépôt doit être public.** L'application interroge GitHub sans
