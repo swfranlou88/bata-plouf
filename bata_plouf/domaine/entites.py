@@ -219,6 +219,23 @@ class Chantier(Archivable):
 
 
 @dataclass
+class Composant:
+    """Ce qu'un ouvrage consomme par unité : un article et sa quantité.
+
+    « Un mètre carré de mur en agglos, c'est 10 agglos, 0,02 m³ de mortier et
+    2,93 heures. » C'est ce qui bâtit le prix de vente, et c'est aussi la
+    liste de courses du chantier.
+    """
+
+    article_id: str = ""
+    quantite: float = 0.0
+    # Le nom au moment de la composition : une fiche peut disparaître de la
+    # bibliothèque, l'ouvrage doit rester lisible.
+    designation: str = ""
+    unite: str = ""
+
+
+@dataclass
 class Article(Archivable):
     """Une ligne de la bibliothèque de prix : matériau, main d'œuvre ou ouvrage."""
 
@@ -239,6 +256,9 @@ class Article(Archivable):
     prix_vente: float = 0.0
     taux_tva: float = 10.0
     ref_externe: str = ""
+    # Ce dont un ouvrage est fait : matériaux et heures, par unité d'ouvrage.
+    # Vide pour un matériau, qui ne se compose de rien.
+    composants: list[Composant] = field(default_factory=list)
     supprime_le: str = ""
     cree_le: str = field(default_factory=maintenant)
     modifie_le: str = field(default_factory=maintenant)
@@ -440,4 +460,7 @@ def depuis_dict(classe, donnees: dict):
     filtre = {k: v for k, v in donnees.items() if k in connus}
     if classe in (Devis, Facture) and "lignes" in donnees:
         filtre["lignes"] = [depuis_dict(Ligne, l) for l in donnees.get("lignes") or []]
+    if classe is Article and "composants" in donnees:
+        filtre["composants"] = [depuis_dict(Composant, c)
+                                for c in donnees.get("composants") or []]
     return classe(**filtre)

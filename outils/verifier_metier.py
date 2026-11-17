@@ -506,6 +506,7 @@ def main() -> int:
     from bata_plouf.domaine.chantier import (
         Catalogue, heures_unitaires, preparation,
     )
+    from bata_plouf.domaine import Composant
     pose = Article(designation="Carrelage posé", type="ouvrage", unite="m²",
                    prix_vente=60.0, notes_internes="Main d'oeuvre  1.250")
     sans = Article(designation="Démolition d'un mur", type="ouvrage",
@@ -552,6 +553,44 @@ def main() -> int:
              == 4)
     verifier("les journées sont de sept heures",
              abs(prevu.journees - 30.0 / 7.0) < 0.001)
+
+    # La composition d'un ouvrage : ce qu'il consomme par unité, matière et
+    # heures. C'est elle qui bâtit le prix, et la liste de courses du chantier.
+    agglo = Article(designation="Bloc creux 20", type="matériau", unite="u",
+                    prix_vente=1.5)
+    heure = Article(designation="0 Main d'oeuvre", type="main d'œuvre",
+                    unite="h", prix_vente=40.0)
+    engin = Article(designation="Tractopelle", type="main d'œuvre", unite="h",
+                    prix_vente=55.0)
+    mur = Article(designation="Mur en agglos", type="ouvrage", unite="m²",
+                  prix_vente=126.0, notes_internes="Main d'oeuvre  9.000",
+                  composants=[
+                      Composant(heure.id, 2.93, heure.designation, "h"),
+                      Composant(agglo.id, 10.0, agglo.designation, "u"),
+                      Composant(engin.id, 0.03, engin.designation, "h"),
+                  ])
+    verifier("la composition l'emporte sur la vieille note",
+             heures_unitaires(mur) == 2.93, str(heures_unitaires(mur)))
+    travaux = Devis(lignes=[
+        Ligne(designation="Mur en agglos", quantite=12, unite="m²",
+              prix_unitaire=126.0, article_id=mur.id),
+        Ligne(designation="Mur en agglos", quantite=3, unite="m²",
+              prix_unitaire=126.0, article_id=mur.id),
+        Ligne(designation="Bloc creux 20", quantite=5, unite="u",
+              prix_unitaire=1.5, article_id=agglo.id),
+    ])
+    chantier = preparation(travaux, Catalogue([agglo, heure, engin, mur]))
+    verifier("les heures viennent de la composition",
+             abs(chantier.heures - 15 * 2.93) < 0.001, f"{chantier.heures} h")
+    quantites = {f.designation: f.quantite for f in chantier.fournitures}
+    verifier("la matière des ouvrages entre dans la liste de courses",
+             quantites.get("Bloc creux 20") == 155.0, str(quantites))
+    verifier("deux postes du même ouvrage s'additionnent",
+             len(chantier.fournitures) == 1)
+    verifier("les heures de machine ne se mêlent pas aux heures d'homme",
+             [(m.designation, round(m.heures, 2)) for m in chantier.machines]
+             == [("Tractopelle", 0.45)],
+             str(chantier.machines))
 
     print("\nAdresse du chantier")
     from bata_plouf.adaptateurs.interface.commun import adresse_en_ligne

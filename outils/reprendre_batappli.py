@@ -157,6 +157,12 @@ class O:  # OUV, 872 octets
     COMPOSITION = 669
 
 
+class AO:  # ARTOUV, 31 octets — ce dont un ouvrage est fait
+    # Trois cent mille lignes de devis n'auraient pas suffi à deviner ces
+    # quantités : elles sont ici, une ligne par matériau et par heure.
+    QUANTITE, ORDRE, PRIX, OUVRAGE, ARTICLE = 5, 9, 13, 23, 27
+
+
 class D:  # DEVIS, 893 octets
     REFERENCE, CLIENT = 5, 26
     NOM, ADR_FACTURATION, ADR_CHANTIER = 30, 131, 332
@@ -233,6 +239,46 @@ def postes(enregs: list[bytes], Ligne) -> tuple[list, float]:
             taux_tva=reel(e, L.TVA),
             avancement_pct=float(avancement) if 0 < avancement <= 100 else 0.0))
     return resultat, round(derive, 2)
+
+
+def composer(depot, source: Path, bilan: dict) -> None:
+    """Rattache à chaque ouvrage ce dont il est fait.
+
+    ARTOUV dit, pour une unité d'ouvrage, quelle quantité de quel article :
+    dix agglos, deux sacs de ciment, deux heures et demie de main d'œuvre.
+    C'est ce qui bâtit le prix de vente, et c'est la liste de courses du
+    chantier — sans elle, un devis dit ce qu'on facture et jamais ce qu'il
+    faut emmener.
+    """
+    par_ref = {a.ref_externe: a for a in depot.articles() if a.ref_externe}
+    from bata_plouf.domaine import Composant
+
+    composition: dict[str, list] = {}
+    orphelines = 0
+    for e in lire(source / "ARTOUV.FIC"):
+        ouvrage = par_ref.get(f"batappli:ouv:{entier(e, AO.OUVRAGE)}")
+        article = par_ref.get(f"batappli:art:{entier(e, AO.ARTICLE)}")
+        if ouvrage is None or article is None:
+            # Une ligne qui renvoie à un ouvrage ou à un article effacé de
+            # l'ancienne base : on la laisse, plutôt que d'inventer.
+            orphelines += 1
+            continue
+        composition.setdefault(ouvrage.id, []).append(
+            (entier(e, AO.ORDRE),
+             Composant(article_id=article.id,
+                       quantite=round(reel(e, AO.QUANTITE), 4),
+                       designation=article.designation, unite=article.unite)))
+
+    for ouvrage in depot.articles():
+        lignes = composition.get(ouvrage.id)
+        if not lignes:
+            continue
+        ouvrage.composants = [c for _, c in sorted(lignes, key=lambda x: x[0])]
+        bilan["compositions"] += 1
+    depot._ecrire_articles()
+    bilan["lignes de composition"] = sum(len(v) for v in composition.values())
+    if orphelines:
+        bilan["composition orpheline"] = orphelines
 
 
 def convertir(source: Path, destination: Path) -> dict:
@@ -356,6 +402,8 @@ def convertir(source: Path, destination: Path) -> dict:
             taux_tva=reel(e, O.TVA) or 10.0,
             ref_externe=f"batappli:ouv:{entier(e, 1)}"))
         bilan["ouvrages"] += 1
+
+    composer(depot, source, bilan)
 
     # --- les chantiers ----------------------------------------------------
     # BatAppli n'a pas de fiche chantier : l'adresse des travaux est

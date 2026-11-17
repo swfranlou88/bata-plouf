@@ -9,8 +9,8 @@ démoder.
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QAbstractItemView, QGroupBox, QHBoxLayout, QLabel, QTableView, QVBoxLayout,
-    QWidget,
+    QAbstractItemView, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QTableView,
+    QVBoxLayout, QWidget,
 )
 
 from ...domaine import STATUTS_DEVIS, date_fr, euros, nombre
@@ -220,16 +220,22 @@ class FicheChantier(QWidget):
     def _fournitures(self, prevu) -> QGroupBox:
         boite = QGroupBox("Fournitures à prévoir")
         dedans = QVBoxLayout(boite)
+        # Du plus gros au plus petit : on charge le camion dans cet ordre.
+        fournitures = sorted(prevu.fournitures, key=lambda f: -f.quantite)
         modele = ModeleListe([
             Colonne("Matériau", lambda f: f.designation),
             Colonne("Quantité", lambda f: nombre(f.quantite, 2), largeur=90,
-                    alignement=DROITE, cle=lambda f: f.quantite),
+                    alignement=DROITE, gras=True, cle=lambda f: f.quantite),
             Colonne("Un.", lambda f: f.unite, largeur=55, alignement=CENTRE),
-        ], prevu.fournitures)
+        ], fournitures)
         dedans.addWidget(self._tableau(modele), 1)
+        if prevu.machines:
+            dedans.addWidget(QLabel("<b>Machines</b> : " + ", ".join(
+                f"{m.designation} {nombre(m.heures, 1)} h"
+                for m in prevu.machines)))
         dedans.addWidget(discret(
-            "Les matériaux compris dans un ouvrage n'y figurent pas : "
-            "l'ancien logiciel n'en gardait que le temps de pose."))
+            "Quantités cumulées sur tous les postes, d'après la composition "
+            "des ouvrages."))
         return boite
 
     @staticmethod
@@ -241,10 +247,16 @@ class FicheChantier(QWidget):
         tableau.setAlternatingRowColors(True)
         tableau.verticalHeader().setVisible(False)
         tableau.verticalHeader().setDefaultSectionSize(24)
+        entetes = tableau.horizontalHeader()
+        entetes.setStretchLastSection(False)
         for rang, colonne in enumerate(modele.colonnes):
             if colonne.largeur:
+                entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Fixed)
                 tableau.setColumnWidth(rang, colonne.largeur)
-        tableau.horizontalHeader().setStretchLastSection(False)
+            else:
+                # Le libellé prend ce qui reste : un poste tronqué à huit
+                # signes ne dit pas quel poste c'est.
+                entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Stretch)
         activer_le_tri(tableau, modele)
         infobulles_si_tronque(tableau)
         return tableau

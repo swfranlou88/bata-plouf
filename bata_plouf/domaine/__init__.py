@@ -13,7 +13,8 @@ l'ancien logiciel. Il peut tourner et se tester seul.
 
 from .calculs import LigneTVA, Totaux, calculer_totaux, sous_totaux_sections, sou
 from .entites import (
-    Archivable, Article, Chantier, Client, Devis, FAMILLES, Facture,
+    Archivable, Article, Chantier, Client, Composant, Devis, FAMILLES,
+    Facture,
     LIBELLES_FACTURE, Ligne, MODES_PAIEMENT, STATUTS_CHANTIER, STATUTS_DEVIS,
     STATUTS_FACTURE, Societe, TAUX_TVA, TYPES_ARTICLE, TYPES_FACTURE, UNITES,
     depuis_dict, en_dict, maintenant, nouvel_id,
@@ -23,7 +24,8 @@ from .gabarit import Gabarit
 from .ports import Depot, JournalFactures, RegistreVentes, SourceDocuments
 
 __all__ = [
-    "Archivable", "Article", "Chantier", "Client", "Depot", "Devis", "FAMILLES",
+    "Archivable", "Article", "Chantier", "Client", "Composant", "Depot",
+    "Devis", "FAMILLES",
     "Facture", "Gabarit", "JournalFactures", "RegistreVentes", "LIBELLES_FACTURE", "Ligne",
     "LigneTVA", "MODES_PAIEMENT", "STATUTS_CHANTIER", "STATUTS_DEVIS",
     "STATUTS_FACTURE", "Societe", "SourceDocuments", "TAUX_TVA", "TYPES_ARTICLE",

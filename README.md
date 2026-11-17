@@ -129,9 +129,19 @@ est annoncé comme tel plutôt que compté pour zéro. Rien ne s'enregistre :
 tout se recalcule à l'ouverture, donc rien ne peut s'y démoder. Un bouton
 mène du devis à son chantier et du chantier à son devis.
 
-La composition reprise ne porte que des heures : l'ancien logiciel ne gardait
-pas les quantités de matière d'un ouvrage. Les fournitures annoncées sont
-donc celles que le devis pose en ligne directe.
+Un ouvrage porte sa **composition** : ce qu'il consomme par unité, matière et
+heures — « un mètre carré de bouchage en agglos, c'est un bloc creux, un
+demi-sac de ciment, 0,03 m³ de sable et 2,93 heures ». Elle se lit sur la
+fiche, sous les prix. Multipliée par les quantités du devis et additionnée
+d'un poste à l'autre, elle donne la liste de courses du chantier ; les heures
+de machine y vont à part, car une heure de tractopelle n'est pas une heure
+d'homme.
+
+Cette composition était dans l'ancien logiciel, dans une table à côté des
+ouvrages, et la première reprise l'avait manquée : `outils/reprendre_composition.py`
+va la chercher et la pose sur la bibliothèque existante. Les 1274 ouvrages
+l'ont reçue, 3536 lignes en tout. On peut s'y fier : sur 1189 d'entre eux, la
+somme des composants retombe sur le prix de vente à 2 % près.
 
 **Matériaux** et **ouvrages** sont la même bibliothèque, séparée en deux
 écrans : d'un côté ce qui s'achète chez le fournisseur, de l'autre la

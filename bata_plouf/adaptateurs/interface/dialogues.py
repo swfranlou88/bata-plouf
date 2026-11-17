@@ -1,16 +1,18 @@
 """Fiches de saisie : client, chantier, article de la bibliothèque de prix."""
 
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
-    QPlainTextEdit, QVBoxLayout, QWidget,
+    QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QHeaderView, QLabel,
+    QPlainTextEdit, QTableView, QVBoxLayout, QWidget,
 )
 
 from ...domaine import (
     Article, Chantier, Client, FAMILLES, STATUTS_CHANTIER, TAUX_TVA,
     TYPES_ARTICLE, UNITES, euros, nombre,
 )
+from ...domaine.chantier import est_du_temps
 from .commun import (
-    bouton, champ_date, champ_euros, champ_texte, etiquette_client,
+    CENTRE, Colonne, DROITE, ModeleListe, bouton, champ_date, champ_euros,
+    champ_texte, discret, etiquette_client, infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, valeur_date,
 )
 
@@ -204,10 +206,68 @@ class DialogueArticle(DialogueBase):
             "jamais imprimé")
         self.ajouter("Notes internes", self.notes)
 
+        if a.type == "ouvrage" or a.composants:
+            self.ajouter("Composition", self._composition(a))
+
         self.prix_achat.valueChanged.connect(self._suivre_achat)
         self.prix_achat.valueChanged.connect(self._marge)
         self.prix_vente.valueChanged.connect(self._marge)
         self._marge()
+
+    def _composition(self, article):
+        """Ce dont l'ouvrage est fait, par unité : matière et heures.
+
+        C'est la table qui bâtit le prix de vente et qui fait, sur un
+        chantier, la liste de ce qu'il faut emmener. Elle se lit ici ; elle
+        se modifie encore dans l'ancien logiciel, pas dans celui-ci.
+        """
+        cadre = QWidget()
+        dedans = QVBoxLayout(cadre)
+        dedans.setContentsMargins(0, 0, 0, 0)
+        dedans.setSpacing(4)
+
+        if not article.composants:
+            dedans.addWidget(discret(
+                "Aucune composition connue : le chantier ne saura dire ni le "
+                "temps ni la matière de cet ouvrage."))
+            return cadre
+
+        modele = ModeleListe([
+            Colonne("Pour une unité", lambda c: c.designation),
+            Colonne("Quantité", lambda c: nombre(c.quantite, 3), largeur=85,
+                    alignement=DROITE, cle=lambda c: c.quantite),
+            Colonne("Un.", lambda c: c.unite, largeur=50, alignement=CENTRE),
+        ], list(article.composants))
+        tableau = QTableView()
+        tableau.setModel(modele)
+        tableau.setEditTriggers(QTableView.EditTrigger.NoEditTriggers)
+        tableau.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        tableau.verticalHeader().setVisible(False)
+        tableau.verticalHeader().setDefaultSectionSize(22)
+        tableau.setAlternatingRowColors(True)
+        tableau.setMaximumHeight(150)
+        entetes = tableau.horizontalHeader()
+        entetes.setStretchLastSection(False)
+        for rang, colonne in enumerate(modele.colonnes):
+            if colonne.largeur:
+                entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Fixed)
+                tableau.setColumnWidth(rang, colonne.largeur)
+            else:
+                entetes.setSectionResizeMode(rang, QHeaderView.ResizeMode.Stretch)
+        infobulles_si_tronque(tableau)
+        dedans.addWidget(tableau)
+
+        heures = sum(c.quantite for c in article.composants
+                     if est_du_temps(c.unite))
+        matiere = sum(1 for c in article.composants if not est_du_temps(c.unite))
+        dedans.addWidget(discret(
+            f"{nombre(heures, 3)} heure(s) et {matiere} matériau(x) "
+            f"par {article.unite or 'unité'}."))
+        # Sans ce ressort, le formulaire étire la composition sur toute la
+        # hauteur restante et le total se retrouve à dix centimètres du
+        # tableau qu'il résume.
+        dedans.addStretch(1)
+        return cadre
 
     def _suivre_achat(self, achat: float) -> None:
         """Le prix de vente suit l'achat, à la marge de la maison.
