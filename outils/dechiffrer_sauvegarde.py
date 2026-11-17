@@ -7,12 +7,21 @@ n'est plus là. Ce script ne dépend que de Python et de la phrase de passe.
     uv run python outils/dechiffrer_sauvegarde.py bata-plouf-2026-11.zip.enc
 
 Il rend un fichier .zip ordinaire, celui qu'on glisse dans Paramètres →
-« Restaurer depuis une archive ». On peut aussi lui donner une adresse :
+« Importer un zip ». Trois façons de lui désigner la sauvegarde :
 
-    uv run python outils/dechiffrer_sauvegarde.py https://github.com/.../fichier.zip.enc
+    … dechiffrer_sauvegarde.py bata-plouf-2026-11.zip.enc      un fichier local
+    … dechiffrer_sauvegarde.py https://…/fichier.zip.enc       une adresse
+    … dechiffrer_sauvegarde.py compte/depot bata-plouf-2026-11.zip.enc
 
-La phrase de passe se tape à l'invite, jamais sur la ligne de commande : elle
-y resterait dans l'historique du terminal.
+La troisième va chercher la pièce dans la release « sauvegardes » du dépôt,
+privé compris. Il faut alors un jeton de lecture, dans la variable
+JETON_GITHUB ou dans le sauvegarde.env du dossier de données :
+
+    JETON_GITHUB=github_pat_… uv run python outils/dechiffrer_sauvegarde.py \
+        compte/bata-plouf-sauvegardes bata-plouf-2026-11.zip.enc
+
+Phrase de passe et jeton ne se tapent jamais sur la ligne de commande : ils
+resteraient dans l'historique du terminal.
 """
 
 import getpass
@@ -25,8 +34,43 @@ RACINE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RACINE))
 
 
-def recuperer(source: str) -> tuple[Path, Path | None]:
+def jeton_connu() -> str:
+    """Le jeton, pris dans l'environnement ou dans le dossier de données."""
+    import os
+
+    from bata_plouf.adaptateurs import environnement
+    from bata_plouf.adaptateurs.depot_fichiers import DOSSIER_DEFAUT
+
+    return (os.environ.get(environnement.JETON)
+            or environnement.lire(DOSSIER_DEFAUT).get(environnement.JETON, ""))
+
+
+def recuperer(arguments: list[str]) -> tuple[Path, Path | None]:
     """Le fichier à ouvrir, et le dossier temporaire à effacer après."""
+    from bata_plouf.adaptateurs.sauvegarde_en_ligne import (
+        ErreurSauvegarde, telecharger,
+    )
+
+    source = arguments[0]
+    if "/" in source and not source.startswith(("http://", "https://")) \
+            and not Path(source).expanduser().exists():
+        # « compte/depot nom-du-fichier » : on passe par l'API, seule voie
+        # vers un dépôt privé.
+        if len(arguments) < 2:
+            raise SystemExit("Indiquez aussi le nom du fichier à rapatrier.")
+        jeton = jeton_connu()
+        if not jeton:
+            raise SystemExit(
+                "Aucun jeton : renseignez JETON_GITHUB, ou lancez cet outil "
+                "sur la machine où le logiciel est installé.")
+        abri = Path(tempfile.mkdtemp(prefix="bata-plouf-sauvegarde-"))
+        print(f"Téléchargement de {arguments[1]} depuis {source}…")
+        try:
+            return telecharger(source, jeton, arguments[1],
+                               abri / arguments[1]), abri
+        except ErreurSauvegarde as erreur:
+            raise SystemExit(str(erreur)) from erreur
+
     if not source.startswith(("http://", "https://")):
         return Path(source).expanduser(), None
     abri = Path(tempfile.mkdtemp(prefix="bata-plouf-sauvegarde-"))
@@ -45,16 +89,14 @@ def main() -> int:
         print(__doc__)
         return 2
 
-    source, abri = recuperer(sys.argv[1])
+    source, abri = recuperer(sys.argv[1:])
     try:
         if not source.is_file():
             print(f"Fichier introuvable : {source}")
             return 1
-        if len(sys.argv) > 2:
-            destination = Path(sys.argv[2]).expanduser()
-        else:
-            nom = source.name[:-4] if source.name.endswith(".enc") else source.name + ".zip"
-            destination = Path.cwd() / nom
+        nom = (source.name[:-4] if source.name.endswith(".enc")
+               else source.name + ".zip")
+        destination = Path.cwd() / nom
 
         phrase = getpass.getpass("Phrase de passe : ")
         print("Déchiffrement… (une seconde, la dérivation de la clé est lente "

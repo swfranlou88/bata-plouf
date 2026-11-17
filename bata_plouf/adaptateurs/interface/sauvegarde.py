@@ -9,16 +9,20 @@ le logiciel, ni personne ne la connaît. La fenêtre le dit, et la demande deux
 fois, comme on fait pour un mot de passe qu'on ne reverra jamais.
 """
 
+import shutil
+import tempfile
+from pathlib import Path
+
 from PySide6.QtCore import QThread, Qt, Signal
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit, QVBoxLayout,
+    QDialog, QDialogButtonBox, QFormLayout, QInputDialog, QLabel, QLineEdit,
+    QListWidget, QVBoxLayout,
 )
 
-from ...domaine import euros  # noqa: F401  (gardé pour l'uniformité des vues)
-from .. import environnement, sauvegarde_mensuelle
+from .. import environnement, sauvegarde_en_ligne, sauvegarde_mensuelle
+from ..coffre import ErreurCoffre, dechiffrer_fichier, reproche
 from ..sauvegarde_en_ligne import ErreurSauvegarde
-from ..coffre import reproche
-from .commun import alerter, bouton, champ_texte, discret, informer
+from .commun import alerter, champ_texte, discret, informer
 
 
 class DialogueSecrets(QDialog):
@@ -127,6 +131,89 @@ class Sauvegardeur(QThread):
             self.echoue.emit(str(erreur))
         except Exception as erreur:  # noqa: BLE001 — un fil ne doit rien laisser filer
             self.echoue.emit(f"{type(erreur).__name__} : {erreur}")
+
+
+class DialogueRestaurer(QDialog):
+    """Choisir une sauvegarde en ligne, la rapatrier et la déchiffrer.
+
+    Restaurer depuis un terminal suppose Python, uv et le dossier du code
+    source — trois choses qu'un Mac neuf n'a pas. Le logiciel, lui, est le
+    premier à être réinstallé : c'est donc à lui de savoir rouvrir une
+    sauvegarde.
+    """
+
+    def __init__(self, parent, depot):
+        super().__init__(parent)
+        self.depot = depot
+        self.choix = None
+        self.setWindowTitle("Restaurer une sauvegarde en ligne")
+        self.setMinimumWidth(520)
+
+        self.liste = QListWidget()
+        self.message = discret("")
+        self.message.setWordWrap(True)
+
+        boutons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        boutons.button(QDialogButtonBox.StandardButton.Ok).setText("Restaurer")
+        boutons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
+        boutons.accepted.connect(self._choisir)
+        boutons.rejected.connect(self.reject)
+
+        disposition = QVBoxLayout(self)
+        disposition.setSpacing(10)
+        disposition.addWidget(QLabel(
+            "Ces sauvegardes remplaceront la totalité des données. "
+            "L'état actuel est mis de côté avant, et reste récupérable."))
+        disposition.addWidget(self.liste, 1)
+        disposition.addWidget(self.message)
+        disposition.addWidget(boutons)
+        self._remplir()
+
+    def _remplir(self) -> None:
+        secrets = environnement.lire(self.depot.racine)
+        cible = sauvegarde_mensuelle.depot_vise(self.depot)
+        try:
+            pieces = sauvegarde_en_ligne.liste(cible, secrets[environnement.JETON])
+        except ErreurSauvegarde as erreur:
+            self.message.setText(str(erreur))
+            return
+        for nom, taille, date in pieces:
+            self.liste.addItem(f"{nom}  ·  {taille // 1024} Ko  ·  déposée le {date}")
+        if not pieces:
+            self.message.setText(f"Aucune sauvegarde en ligne sur {cible}.")
+        else:
+            self.liste.setCurrentRow(0)
+
+    def _choisir(self) -> None:
+        element = self.liste.currentItem()
+        if element is None:
+            return
+        self.choix = element.text().split("  ·  ")[0]
+        self.accept()
+
+
+def rapatrier(parent, depot, nom: str) -> Path | None:
+    """Télécharge et déchiffre une sauvegarde ; rend le zip en clair."""
+    secrets = environnement.lire(depot.racine)
+    phrase = secrets[environnement.PHRASE]
+    if not phrase:
+        phrase, accepte = QInputDialog.getText(
+            parent, "Phrase de passe",
+            "Phrase de passe de la sauvegarde :", QLineEdit.EchoMode.Password)
+        if not accepte or not phrase:
+            return None
+
+    abri = Path(tempfile.mkdtemp(prefix="bata-plouf-restauration-"))
+    try:
+        chiffre = sauvegarde_en_ligne.telecharger(
+            sauvegarde_mensuelle.depot_vise(depot),
+            secrets[environnement.JETON], nom, abri / nom)
+        return dechiffrer_fichier(chiffre, abri / "sauvegarde.zip", phrase)
+    except (ErreurSauvegarde, ErreurCoffre) as erreur:
+        shutil.rmtree(abri, ignore_errors=True)
+        alerter(parent, "Restauration impossible", str(erreur))
+        return None
 
 
 def regler(parent, depot) -> bool:

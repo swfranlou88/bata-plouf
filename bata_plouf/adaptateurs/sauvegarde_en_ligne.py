@@ -127,6 +127,58 @@ def deposer(depot: str, jeton: str, fichier: Path | str,
     return depose.get("browser_download_url", "")
 
 
+class _SansJetonApresRedirection(urllib.request.HTTPRedirectHandler):
+    """Suit la redirection de GitHub sans emporter le jeton.
+
+    Télécharger une pièce jointe privée se fait en deux temps : GitHub
+    renvoie vers son serveur de fichiers, avec une adresse déjà signée. Si
+    l'en-tête d'autorisation suit jusque-là, le serveur refuse — « only one
+    auth mechanism allowed » —, et urllib la recopie par défaut.
+    """
+
+    def redirect_request(self, requete, fp, code, message, entetes, url):
+        suivante = super().redirect_request(requete, fp, code, message,
+                                            entetes, url)
+        if suivante is not None:
+            for nom in ("Authorization", "authorization"):
+                suivante.headers.pop(nom, None)
+                suivante.unredirected_hdrs.pop(nom, None)
+        return suivante
+
+
+def telecharger(depot: str, jeton: str, nom: str, destination: Path | str) -> Path:
+    """Rapatrie une sauvegarde, y compris depuis un dépôt privé.
+
+    L'adresse publique d'une pièce jointe ne répond pas sur un dépôt privé :
+    il faut passer par l'API, qui redirige vers le fichier lui-même.
+    """
+    release = _demander(f"{API}/repos/{depot}/releases/tags/{ETIQUETTE}", jeton)
+    piece = next((p for p in release.get("assets") or []
+                  if p.get("name") == nom), None)
+    if piece is None:
+        connues = ", ".join(p.get("name", "") for p in release.get("assets") or [])
+        raise ErreurSauvegarde(
+            f"« {nom} » n'est pas en ligne. Disponibles : {connues or 'aucune'}.")
+
+    requete = urllib.request.Request(
+        f"{API}/repos/{depot}/releases/assets/{piece['id']}")
+    requete.add_header("Authorization", f"Bearer {jeton}")
+    requete.add_header("Accept", "application/octet-stream")
+    requete.add_header("User-Agent", "Bata-plouf")
+    ouvreur = urllib.request.build_opener(_SansJetonApresRedirection())
+    destination = Path(destination)
+    try:
+        with ouvreur.open(requete, timeout=DELAI) as reponse:
+            destination.write_bytes(reponse.read())
+    except urllib.error.HTTPError as erreur:
+        raise ErreurSauvegarde(_message(erreur)) from erreur
+    except (urllib.error.URLError, TimeoutError) as erreur:
+        raise ErreurSauvegarde(
+            f"Téléchargement impossible : {getattr(erreur, 'reason', erreur)}"
+        ) from erreur
+    return destination
+
+
 def liste(depot: str, jeton: str) -> list[tuple[str, int, str]]:
     """Ce qui est déjà en ligne : nom, taille, date — pour pouvoir le dire."""
     try:

@@ -161,7 +161,9 @@ class VueParametres(QWidget):
             ("État", self.etat_sauvegarde),
             ("", barre(bouton("Réglages…", self._regler_sauvegarde),
                        bouton("Sauvegarder en ligne maintenant",
-                              self._sauvegarder_en_ligne), "-")),
+                              self._sauvegarder_en_ligne),
+                       bouton("Restaurer depuis le dépôt…",
+                              self._restaurer_en_ligne), "-")),
         ]))
         disposition.addWidget(self._groupe("Données", [
             ("Dossier", self.dossier),
@@ -249,7 +251,9 @@ class VueParametres(QWidget):
             "Archive zip (*.zip)")
         if not chemin:
             return
+        self._reprendre_archive(Path(chemin))
 
+    def _reprendre_archive(self, chemin: Path) -> None:
         # On regarde ce que contient l'archive avant de proposer quoi que ce
         # soit : l'import remplace toute la base, et l'utilisateur doit
         # savoir ce qu'il met à la place.
@@ -308,6 +312,23 @@ class VueParametres(QWidget):
 
         sauvegarder_maintenant(self, self.depot)
         self.etat_sauvegarde.setText(sauvegarde_mensuelle.etat(self.depot))
+
+    def _restaurer_en_ligne(self) -> None:
+        """Rapatrier une sauvegarde chiffrée et la remettre en place."""
+        from .sauvegarde import DialogueRestaurer, rapatrier
+
+        if not sauvegarde_mensuelle.depot_vise(self.depot):
+            alerter(self, "Aucun dépôt",
+                    "Réglez d'abord le dépôt des sauvegardes.")
+            return
+        dialogue = DialogueRestaurer(self, self.depot)
+        if dialogue.exec() != QDialog.DialogCode.Accepted or not dialogue.choix:
+            return
+        clair = rapatrier(self, self.depot, dialogue.choix)
+        if clair is not None:
+            # Le reste du chemin est celui d'une archive ordinaire : même
+            # inspection, même confirmation, même sauvegarde de l'état actuel.
+            self._reprendre_archive(Path(clair))
 
     def _chercher_maj(self) -> None:
         DialogueMiseAJour(self, self.depot_maj.text().strip()).exec()

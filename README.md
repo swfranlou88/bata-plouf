@@ -319,11 +319,11 @@ l'incendie, le vol et la panne emportent les deux. Une fois par mois, au
 premier lancement, le logiciel dépose donc une copie **chiffrée** dans une
 release GitHub — 832 Ko pour six cents clients et quatre cents pièces.
 
-Le fichier est public ; c'est la phrase de passe qui le rend illisible.
-**AES-256-GCM**, clé dérivée par **scrypt réglé à 256 Mo par essai** : une
-demi-seconde à l'ouverture, un mur pour qui voudrait essayer des millions de
-mots de passe hors ligne. Les réglages voyagent en clair dans l'en-tête mais
-sont authentifiés : personne ne peut les abaisser en chemin.
+Le dépôt est **privé**, et le fichier **chiffré** : il faut franchir les deux
+portes. **AES-256-GCM**, clé dérivée par **scrypt réglé à 256 Mo par essai** —
+une demi-seconde à l'ouverture, un mur pour qui voudrait essayer des millions
+de mots de passe hors ligne. Les réglages voyagent en clair dans l'en-tête
+mais sont authentifiés : personne ne peut les abaisser en chemin.
 
 Phrase de passe et jeton GitHub vivent dans `sauvegarde.env`, à côté des
 données et **jamais dedans** — ils ne partent donc dans aucune archive.
@@ -341,12 +341,23 @@ Trois précautions de mise en place :
   `releases/latest`, où le logiciel cherche ses mises à jour : sans cela la
   sauvegarde de novembre passerait pour une version à installer.
 
-Pour rouvrir une sauvegarde, sans le logiciel et depuis n'importe quel Mac :
+Pour restaurer : **Paramètres → « Restaurer depuis le dépôt… »**. Le logiciel
+liste ce qui est en ligne, rapatrie, déchiffre, et passe par le même chemin
+qu'une archive ordinaire — inspection, confirmation, sauvegarde de l'état
+actuel avant remplacement. C'est la voie à prendre sur un Mac neuf : le
+logiciel est le premier à être réinstallé, et il n'a besoin de rien d'autre.
 
-    uv run python outils/dechiffrer_sauvegarde.py bata-plouf-2026-11.zip.enc
+En dernier recours, sans le logiciel, depuis n'importe quelle machine :
 
-Il accepte aussi une adresse de téléchargement, et rend un `.zip` ordinaire —
-celui qu'on glisse dans Paramètres → « Importer un zip ».
+    uv run python outils/dechiffrer_sauvegarde.py compte/depot bata-plouf-2026-11.zip.enc
+
+Il accepte aussi un fichier local ou une adresse, et rend un `.zip` ordinaire.
+Sur un dépôt privé, il lui faut le jeton — variable `JETON_GITHUB`, ou le
+`sauvegarde.env` de la machine.
+
+**La trousse de secours**, à garder ailleurs qu'en ligne : la phrase de passe,
+le jeton, et le nom du dépôt. Avec ces trois-là, une sauvegarde se rouvre
+depuis n'importe où. Sans la phrase, personne ne le peut.
 
 **La phrase de passe ne se récupère pas.** Ni GitHub, ni le logiciel, ni
 personne ne la connaît. Notée ailleurs, ou les sauvegardes sont perdues.
