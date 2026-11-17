@@ -2,7 +2,8 @@
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QHeaderView, QLabel,
+    QAbstractSpinBox, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
+    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
     QPlainTextEdit, QTableView, QVBoxLayout, QWidget,
 )
 
@@ -98,25 +99,43 @@ class ModeleComposants(QAbstractTableModel):
 
 
 class DialogueBase(QDialog):
+    """Socle des fiches : le formulaire, les boutons, et la sortie surveillée.
+
+    Deux règles pour une fiche qu'on remplit au clavier :
+
+      — **Entrée ne valide pas.** On tape un prix, on fait Entrée pour
+        confirmer le champ, et la fenêtre se fermait : c'est la touche la
+        plus naturelle qui faisait le geste le plus brutal. Aucun bouton
+        n'est donc « par défaut ».
+      — **Sortir sans enregistrer se demande.** Fermer une fiche modifiée
+        par Annuler, par Échap ou par la croix fait apparaître ce qui serait
+        perdu, et laisse le choix entre enregistrer, abandonner, ou revenir.
+    """
+
     def __init__(self, parent, titre_: str):
         super().__init__(parent)
         self.setWindowTitle(titre_)
         self.setMinimumWidth(520)
         self.formulaire = QFormLayout()
-        self.formulaire.setLabelAlignment(
-            __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.AlignmentFlag.AlignRight
-        )
+        self.formulaire.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self.boutons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
-        self.boutons.button(QDialogButtonBox.StandardButton.Save).setText("Enregistrer")
-        self.boutons.button(QDialogButtonBox.StandardButton.Cancel).setText("Annuler")
+        enregistrer = self.boutons.button(QDialogButtonBox.StandardButton.Save)
+        enregistrer.setText("Enregistrer")
+        annuler = self.boutons.button(QDialogButtonBox.StandardButton.Cancel)
+        annuler.setText("Annuler")
+        # Sans bouton par défaut, Entrée dans un champ ne ferme plus la fiche.
+        for bouton_ in (enregistrer, annuler):
+            bouton_.setAutoDefault(False)
+            bouton_.setDefault(False)
         self.boutons.accepted.connect(self.accept)
         self.boutons.rejected.connect(self.reject)
 
         disposition = QVBoxLayout(self)
         disposition.addLayout(self.formulaire)
         disposition.addWidget(self.boutons)
+        self._depart: dict | None = None
 
     def ajouter(self, etiquette: str, widget):
         self.formulaire.addRow(etiquette, widget)
@@ -129,6 +148,144 @@ class DialogueBase(QDialog):
         ligne.addWidget(gauche)
         ligne.addWidget(droite, 1)
         self.formulaire.addRow(etiquette, boite)
+
+    # --- ce que la fiche montre, et ce qui y a changé --------------------
+
+    def _valeur(self, widget) -> str:
+        """Ce qu'affiche un champ, quel qu'il soit, en une chaîne."""
+        if isinstance(widget, QPlainTextEdit):
+            return widget.toPlainText().strip()
+        if isinstance(widget, QLineEdit):
+            return widget.text().strip()
+        if isinstance(widget, QComboBox):
+            return widget.currentText().strip()
+        if isinstance(widget, QAbstractSpinBox):
+            return widget.text().strip()
+        if isinstance(widget, QCheckBox):
+            return "oui" if widget.isChecked() else "non"
+        if isinstance(widget, QTableView) and widget.model() is not None:
+            modele = widget.model()
+            return " · ".join(
+                str(modele.index(rang, colonne).data() or "")
+                for rang in range(modele.rowCount())
+                for colonne in range(modele.columnCount()))
+        if isinstance(widget, QWidget) and not isinstance(widget, QLabel):
+            # Les paires et les cadres : on lit ce qu'ils contiennent, mais
+            # sans descendre dans les champs eux-mêmes — la ligne de saisie
+            # d'un compteur appartient au compteur, et le lire deux fois
+            # donnerait « 40,00 / 40,00 ».
+            dedans = [self._valeur(enfant)
+                      for enfant in widget.findChildren(
+                          QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly)
+                      if isinstance(enfant, (QLineEdit, QComboBox, QCheckBox,
+                                             QPlainTextEdit, QAbstractSpinBox,
+                                             QTableView))]
+            return " / ".join(v for v in dedans if v)
+        return ""
+
+    def champs(self) -> dict:
+        """Les champs de la fiche, par leur intitulé, tels qu'ils sont là.
+
+        On lit les widgets, pas l'entité : calculer l'état courant en
+        appelant resultat() écrirait dans la fiche du dépôt, et ce serait
+        précisément ce qu'on cherche à éviter quand on sort sans enregistrer.
+        """
+        lus = {}
+        for rang in range(self.formulaire.rowCount()):
+            intitule = self.formulaire.itemAt(rang, QFormLayout.ItemRole.LabelRole)
+            champ = self.formulaire.itemAt(rang, QFormLayout.ItemRole.FieldRole)
+            if champ is None or champ.widget() is None:
+                continue
+            nom = ""
+            if intitule is not None and isinstance(intitule.widget(), QLabel):
+                nom = intitule.widget().text().strip()
+            valeur = self._valeur(champ.widget())
+            if nom:
+                lus[nom] = valeur
+        return lus
+
+    def retenir_depart(self) -> None:
+        """À appeler une fois la fiche remplie : l'état à comparer plus tard."""
+        self._depart = self.champs()
+
+    def showEvent(self, evenement) -> None:
+        # Au premier affichage, et pas dans le constructeur : chaque fiche
+        # ajoute ses champs à sa façon, et aucune n'aurait à penser à le
+        # dire. À l'écran, tout est en place.
+        super().showEvent(evenement)
+        # Qt réattribue un bouton « par défaut » à l'affichage : on le lui
+        # retire après coup, sinon Entrée refermerait la fiche malgré tout.
+        for bouton_ in self.boutons.buttons():
+            bouton_.setAutoDefault(False)
+            bouton_.setDefault(False)
+        if self._depart is None:
+            self.retenir_depart()
+
+    def differences(self) -> list[tuple[str, str, str]]:
+        if self._depart is None:
+            return []
+        maintenant = self.champs()
+        return [(nom, self._depart.get(nom, ""), valeur)
+                for nom, valeur in maintenant.items()
+                if valeur != self._depart.get(nom, "")]
+
+    # --- sortie surveillée ------------------------------------------------
+
+    def _decider_sortie(self) -> str:
+        """« enregistrer », « quitter » ou « rester », selon ce qu'on répond."""
+        ecarts = self.differences()
+        if not ecarts:
+            return "quitter"
+
+        detail = "\n".join(
+            f"· {nom} : {avant or '(vide)'} → {apres or '(vide)'}"
+            for nom, avant, apres in ecarts[:8])
+        if len(ecarts) > 8:
+            detail += f"\n· … et {len(ecarts) - 8} autre(s)"
+
+        boite = QMessageBox(self)
+        boite.setWindowTitle("Modifications non enregistrées")
+        boite.setIcon(QMessageBox.Icon.Warning)
+        boite.setText("Cette fiche a été modifiée.")
+        boite.setInformativeText(detail)
+        garder = boite.addButton("Enregistrer et quitter",
+                                 QMessageBox.ButtonRole.AcceptRole)
+        jeter = boite.addButton("Quitter sans enregistrer",
+                                QMessageBox.ButtonRole.DestructiveRole)
+        rester = boite.addButton("Rester sur la fiche",
+                                 QMessageBox.ButtonRole.RejectRole)
+        # Revenir à la fiche est le choix le moins coûteux : c'est lui qu'on
+        # propose par défaut, et celui qu'Échap déclenche.
+        boite.setDefaultButton(rester)
+        boite.setEscapeButton(rester)
+        boite.exec()
+        clique = boite.clickedButton()
+        if clique is garder:
+            return "enregistrer"
+        if clique is jeter:
+            return "quitter"
+        return "rester"
+
+    def reject(self) -> None:
+        choix = self._decider_sortie()
+        if choix == "rester":
+            return
+        if choix == "enregistrer":
+            self.accept()
+            return
+        super().reject()
+
+    def closeEvent(self, evenement) -> None:
+        choix = self._decider_sortie()
+        if choix == "rester":
+            evenement.ignore()
+            return
+        if choix == "enregistrer":
+            evenement.accept()
+            self.accept()
+            return
+        evenement.accept()
+        super().closeEvent(evenement)
 
 
 class DialogueClient(DialogueBase):
