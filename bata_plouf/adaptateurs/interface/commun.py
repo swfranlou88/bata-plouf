@@ -3,14 +3,17 @@
 import unicodedata
 
 from PySide6.QtCore import (
-    QAbstractTableModel, QEvent, QItemSelectionModel, QModelIndex, QObject,
-    QSortFilterProxyModel, QTimer, Qt,
+    QAbstractTableModel, QDate, QEvent, QItemSelectionModel, QModelIndex,
+    QObject, QSortFilterProxyModel, QTimer, Qt,
 )
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
+from PySide6.QtGui import (
+    QColor, QFont, QFontMetrics, QPalette, QTextCharFormat,
+)
 from PySide6.QtWidgets import (
-    QApplication, QComboBox, QCompleter, QDoubleSpinBox, QHBoxLayout, QLabel,
-    QLineEdit, QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
-    QStyleOptionViewItem, QToolTip, QVBoxLayout, QWidget,
+    QApplication, QCalendarWidget, QComboBox, QCompleter, QDateEdit,
+    QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
+    QSpinBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolTip,
+    QVBoxLayout, QWidget,
 )
 
 from ...domaine import euros
@@ -741,34 +744,61 @@ def informer(parent, titre_: str, message: str) -> None:
     QMessageBox.information(parent, titre_, message)
 
 
-def champ_date(valeur_iso: str = "", optionnel: bool = False):
+VIDE = QDate(1900, 1, 1)
+
+
+class ChampDate(QDateEdit):
     """Champ date au format français, avec calendrier.
 
-    Pour une date facultative, la valeur minimale sert de « case vide » : c'est
-    la façon propre de représenter une absence de date avec un QDateEdit.
+    Pour une date facultative, la valeur minimale sert de « case vide » :
+    c'est la façon propre de représenter une absence de date avec un
+    QDateEdit. Mais le calendrier s'ouvrait alors sur janvier 1900, et il
+    fallait remonter plus de quinze cents mois pour arriver à aujourd'hui.
+    Sur un champ vide il s'ouvre donc sur le mois en cours — sans rien
+    écrire dans le champ : la date ne s'inscrit qu'au clic sur un jour, et
+    refermer le calendrier laisse le champ vide comme il l'était.
     """
-    from PySide6.QtCore import QDate
-    from PySide6.QtWidgets import QDateEdit
 
-    boite = QDateEdit()
-    boite.setCalendarPopup(True)
-    boite.setDisplayFormat("dd/MM/yyyy")
-    vide = QDate(1900, 1, 1)
-    boite.setMinimumDate(vide)
-    if optionnel:
-        boite.setSpecialValueText("—")
-    if valeur_iso:
-        boite.setDate(QDate.fromString(valeur_iso[:10], "yyyy-MM-dd"))
-    elif optionnel:
-        boite.setDate(vide)
-    else:
-        boite.setDate(QDate.currentDate())
-    return boite
+    def __init__(self, valeur_iso: str = "", optionnel: bool = False):
+        super().__init__()
+        self.setCalendarPopup(True)
+        self.setDisplayFormat("dd/MM/yyyy")
+        self.setMinimumDate(VIDE)
+        if optionnel:
+            self.setSpecialValueText("—")
+        if valeur_iso:
+            self.setDate(QDate.fromString(valeur_iso[:10], "yyyy-MM-dd"))
+        elif optionnel:
+            self.setDate(VIDE)
+        else:
+            self.setDate(QDate.currentDate())
+        # Qt ne crée le calendrier qu'au premier clic ; en le posant soi-même
+        # on l'a tout de suite sous la main pour le surveiller.
+        self.setCalendarWidget(QCalendarWidget(self))
+        self.calendarWidget().installEventFilter(self)
+
+    def eventFilter(self, objet, evenement) -> bool:
+        if evenement.type() == QEvent.Type.Show:
+            jour = QDate.currentDate()
+            # Aujourd'hui en gras : sans sélection, rien ne distinguait le
+            # bon jour des trente autres. Remis à chaque ouverture, la date
+            # reste juste même si l'application passe la nuit allumée.
+            objet.setDateTextFormat(QDate(), QTextCharFormat())
+            gras = QTextCharFormat()
+            gras.setFontWeight(QFont.Weight.Bold)
+            objet.setDateTextFormat(jour, gras)
+            if self.date() == VIDE:
+                # Change la page affichée, pas la sélection : le champ, lui,
+                # reste vide tant qu'aucun jour n'est cliqué.
+                objet.setCurrentPage(jour.year(), jour.month())
+        return super().eventFilter(objet, evenement)
+
+
+def champ_date(valeur_iso: str = "", optionnel: bool = False) -> ChampDate:
+    return ChampDate(valeur_iso, optionnel)
 
 
 def valeur_date(boite) -> str:
-    from PySide6.QtCore import QDate
-
-    if boite.date() == QDate(1900, 1, 1):
+    if boite.date() == VIDE:
         return ""
     return boite.date().toString("yyyy-MM-dd")
