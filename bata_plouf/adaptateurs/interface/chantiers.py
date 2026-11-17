@@ -7,7 +7,9 @@ la composition des ouvrages. Rien n'est enregistré ici, donc rien ne peut s'y
 démoder.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QMarginsF, Qt, Signal
+from PySide6.QtGui import QPageLayout, QPageSize, QTextDocument
+from PySide6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 from PySide6.QtWidgets import (
     QAbstractItemView, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QTableView,
     QVBoxLayout, QWidget,
@@ -15,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from ...domaine import STATUTS_DEVIS, date_fr, euros, nombre
 from ...domaine.chantier import Catalogue, preparation
+from ..impression import html_feuille
 from ...domaine.facturation import avancement_facture
 from .commun import (
     CENTRE, Colonne, DROITE, ModeleListe, activer_le_tri, barre, bouton,
@@ -143,8 +146,10 @@ class FicheChantier(QWidget):
 
         colonnes = QHBoxLayout()
         colonnes.setSpacing(14)
-        colonnes.addWidget(self._main_doeuvre(prevu), 3)
-        colonnes.addWidget(self._fournitures(prevu), 2)
+        # À parts égales : depuis que les fournitures portent leurs prix,
+        # elles ont autant de colonnes que la main d'œuvre.
+        colonnes.addWidget(self._main_doeuvre(prevu), 1)
+        colonnes.addWidget(self._fournitures(prevu), 1)
         cadre = QWidget()
         cadre.setLayout(colonnes)
         disposition.addWidget(cadre, 1)
@@ -152,10 +157,36 @@ class FicheChantier(QWidget):
         disposition.addWidget(barre(
             bouton("← Retour à la liste", self.ferme.emit),
             "-",
+            bouton("Imprimer la liste…", self.imprimer),
             bouton("Ouvrir le devis",
                    lambda: self.devis_demande.emit(self.devis),
                    principal=True),
         ))
+
+    # --- impression ------------------------------------------------------
+
+    def imprimer(self) -> None:
+        """La feuille qu'on emporte : fournitures, coût, heures.
+
+        Aucun prix de vente n'y figure : c'est une liste de courses, pas un
+        document pour le client.
+        """
+        prevu = preparation(self.devis, Catalogue(self.depot.articles()))
+        texte = QTextDocument()
+        texte.setDefaultStyleSheet("body, td, th { color: #000000; }")
+        texte.setHtml(html_feuille(self.depot, self.devis, prevu))
+
+        imprimante = QPrinter(QPrinter.PrinterMode.HighResolution)
+        imprimante.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+        imprimante.setPageMargins(QMarginsF(15, 12, 15, 12),
+                                  QPageLayout.Unit.Millimeter)
+        apercu = QPrintPreviewDialog(imprimante, self)
+        apercu.setWindowTitle(f"Feuille de chantier — {self.devis.numero}")
+        apercu.resize(900, 1000)
+        # Qt place lui-même le document dans les marges : pas de peinture à
+        # la main ici, donc pas de marge comptée deux fois.
+        apercu.paintRequested.connect(texte.print_)
+        apercu.exec()
 
     # --- blocs -----------------------------------------------------------
 
@@ -224,15 +255,29 @@ class FicheChantier(QWidget):
         fournitures = sorted(prevu.fournitures, key=lambda f: -f.quantite)
         modele = ModeleListe([
             Colonne("Matériau", lambda f: f.designation),
-            Colonne("Quantité", lambda f: nombre(f.quantite, 2), largeur=90,
+            Colonne("Quantité", lambda f: nombre(f.quantite, 2), largeur=85,
                     alignement=DROITE, gras=True, cle=lambda f: f.quantite),
-            Colonne("Un.", lambda f: f.unite, largeur=55, alignement=CENTRE),
+            Colonne("Un.", lambda f: f.unite, largeur=50, alignement=CENTRE),
+            Colonne("P.U. achat", lambda f: euros(f.prix_achat)
+                    if f.prix_achat else "—", largeur=90, alignement=DROITE,
+                    cle=lambda f: f.prix_achat),
+            Colonne("Coût", lambda f: euros(f.cout) if f.prix_achat else "—",
+                    largeur=95, alignement=DROITE, cle=lambda f: f.cout),
         ], fournitures)
         dedans.addWidget(self._tableau(modele), 1)
+        dedans.addWidget(QLabel(
+            f"<b>{euros(prevu.cout_fournitures)}</b> de fournitures, "
+            "aux prix d'achat de la bibliothèque."))
         if prevu.machines:
             dedans.addWidget(QLabel("<b>Machines</b> : " + ", ".join(
                 f"{m.designation} {nombre(m.heures, 1)} h"
                 for m in prevu.machines)))
+        manquants = sum(1 for f in prevu.fournitures if not f.prix_achat)
+        if manquants:
+            # Un total qui ignore des lignes sans le dire est un total faux.
+            dedans.addWidget(discret(
+                f"{manquants} matériau(x) sans prix d'achat : le total est un "
+                "minimum."))
         dedans.addWidget(discret(
             "Quantités cumulées sur tous les postes, d'après la composition "
             "des ouvrages."))

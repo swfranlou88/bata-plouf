@@ -139,6 +139,13 @@ d'un poste à l'autre, elle donne la liste de courses du chantier ; les heures
 de machine y vont à part, car une heure de tractopelle n'est pas une heure
 d'homme.
 
+La liste de courses porte les **prix d'achat** et leur total : ce que la
+matière coûtera chez le fournisseur, pas ce qu'elle se revend. Un matériau
+dont la fiche n'a pas de prix d'achat est signalé, et le total annoncé comme
+un minimum. Le bouton **Imprimer la liste…** en fait une feuille à emporter,
+avec une case à cocher par ligne pour pointer la livraison — document
+interne, à ne pas remettre au client.
+
 Cette composition était dans l'ancien logiciel, dans une table à côté des
 ouvrages, et la première reprise l'avait manquée : `outils/reprendre_composition.py`
 va la chercher et la pose sur la bibliothèque existante. Les 1274 ouvrages

@@ -557,7 +557,9 @@ def main() -> int:
     # La composition d'un ouvrage : ce qu'il consomme par unité, matière et
     # heures. C'est elle qui bâtit le prix, et la liste de courses du chantier.
     agglo = Article(designation="Bloc creux 20", type="matériau", unite="u",
-                    prix_vente=1.5)
+                    prix_achat=0.9, prix_vente=1.5)
+    tuile = Article(designation="Tuile de rive", type="matériau", unite="u",
+                    prix_achat=5.7, prix_vente=7.0)
     heure = Article(designation="0 Main d'oeuvre", type="main d'œuvre",
                     unite="h", prix_vente=40.0)
     engin = Article(designation="Tractopelle", type="main d'œuvre", unite="h",
@@ -568,6 +570,9 @@ def main() -> int:
                       Composant(heure.id, 2.93, heure.designation, "h"),
                       Composant(agglo.id, 10.0, agglo.designation, "u"),
                       Composant(engin.id, 0.03, engin.designation, "h"),
+                      # Une variante prévue, jamais chiffrée : elle ne doit
+                      # pas encombrer la liste de courses.
+                      Composant(tuile.id, 0.0, tuile.designation, "u"),
                   ])
     verifier("la composition l'emporte sur la vieille note",
              heures_unitaires(mur) == 2.93, str(heures_unitaires(mur)))
@@ -579,7 +584,7 @@ def main() -> int:
         Ligne(designation="Bloc creux 20", quantite=5, unite="u",
               prix_unitaire=1.5, article_id=agglo.id),
     ])
-    chantier = preparation(travaux, Catalogue([agglo, heure, engin, mur]))
+    chantier = preparation(travaux, Catalogue([agglo, tuile, heure, engin, mur]))
     verifier("les heures viennent de la composition",
              abs(chantier.heures - 15 * 2.93) < 0.001, f"{chantier.heures} h")
     quantites = {f.designation: f.quantite for f in chantier.fournitures}
@@ -587,6 +592,16 @@ def main() -> int:
              quantites.get("Bloc creux 20") == 155.0, str(quantites))
     verifier("deux postes du même ouvrage s'additionnent",
              len(chantier.fournitures) == 1)
+    verifier("la liste de courses porte les prix d'achat",
+             [(f.designation, f.prix_achat, f.cout) for f in chantier.fournitures]
+             == [("Bloc creux 20", 0.9, 139.5)],
+             str([(f.designation, f.prix_achat, f.cout)
+                  for f in chantier.fournitures]))
+    verifier("et son total",
+             chantier.cout_fournitures == 139.5,
+             str(chantier.cout_fournitures))
+    verifier("un composant à quantité nulle ne se commande pas",
+             all(f.quantite for f in chantier.fournitures))
     verifier("les heures de machine ne se mêlent pas aux heures d'homme",
              [(m.designation, round(m.heures, 2)) for m in chantier.machines]
              == [("Tractopelle", 0.45)],

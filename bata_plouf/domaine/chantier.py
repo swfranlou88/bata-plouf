@@ -102,6 +102,13 @@ class Fourniture:
     designation: str
     quantite: float
     unite: str
+    # Ce que l'unité coûte chez le fournisseur, pas ce qu'elle se revend :
+    # cette liste sert à commander, pas à facturer.
+    prix_achat: float = 0.0
+
+    @property
+    def cout(self) -> float:
+        return round((self.quantite or 0.0) * (self.prix_achat or 0.0), 2)
 
 
 @dataclass
@@ -125,6 +132,11 @@ class Preparation:
     @property
     def heures(self) -> float:
         return sum(p.heures for p in self.postes)
+
+    @property
+    def cout_fournitures(self) -> float:
+        """Ce que la matière coûtera, aux prix d'achat de la bibliothèque."""
+        return round(sum(f.cout for f in self.fournitures), 2)
 
     @property
     def journees(self) -> float:
@@ -164,20 +176,29 @@ class _Cumul:
     """Un panier qui additionne les quantités d'un même article."""
 
     def __init__(self):
-        self.par_cle: dict[str, list] = {}
+        self.par_cle: dict[tuple, list] = {}
 
-    def ajouter(self, designation: str, quantite: float, unite: str) -> None:
+    def ajouter(self, designation: str, quantite: float, unite: str,
+                prix: float = 0.0) -> None:
         # L'unité fait partie de la clé : on n'additionne pas des sacs et des
         # mètres cubes sous prétexte qu'ils portent le même nom.
         repere = (cle(designation), cle(unite))
         if repere in self.par_cle:
-            self.par_cle[repere][1] += quantite
+            panier = self.par_cle[repere]
+            panier[1] += quantite
+            # Le prix le mieux renseigné l'emporte : une fiche effacée de la
+            # bibliothèque laisserait un zéro qui fausserait le total.
+            panier[3] = panier[3] or prix
         else:
-            self.par_cle[repere] = [designation, quantite, unite]
+            self.par_cle[repere] = [designation, quantite, unite, prix]
 
-    def liste(self) -> list[tuple[str, float, str]]:
-        return [(nom, round(quantite, 4), unite)
-                for nom, quantite, unite in self.par_cle.values()]
+    def liste(self) -> list[tuple[str, float, str, float]]:
+        # Les quantités nulles sortent du panier : la bibliothèque porte des
+        # composants à zéro — une variante prévue, jamais chiffrée — et « 0 u
+        # de tuile » n'a rien à faire sur une liste de courses.
+        return [(nom, round(quantite, 4), unite, prix)
+                for nom, quantite, unite, prix in self.par_cle.values()
+                if round(quantite, 4)]
 
 
 def preparation(document, catalogue: Catalogue) -> Preparation:
@@ -197,16 +218,19 @@ def preparation(document, catalogue: Catalogue) -> Preparation:
         if composants:
             for composant in composants:
                 total = (composant.quantite or 0.0) * quantite
+                fiche = catalogue.par_id.get(composant.article_id)
                 if not est_du_temps(composant.unite):
                     fournitures.ajouter(composant.designation, total,
-                                        composant.unite)
+                                        composant.unite,
+                                        getattr(fiche, "prix_achat", 0.0) or 0.0)
                 elif not est_main_doeuvre(composant.designation):
                     machines.ajouter(composant.designation, total, "h")
 
         if article is not None and getattr(article, "type", "") == "matériau":
             # Un matériau posé en ligne directe sur le devis : du sable livré,
             # un sac de ciment vendu tel quel.
-            fournitures.ajouter(designation, quantite, unite)
+            fournitures.ajouter(designation, quantite, unite,
+                                article.prix_achat or 0.0)
             continue
 
         temps = heures_unitaires(article)
@@ -217,5 +241,5 @@ def preparation(document, catalogue: Catalogue) -> Preparation:
 
     resultat.fournitures = [Fourniture(*f) for f in fournitures.liste()]
     resultat.machines = [Machine(nom, heures)
-                         for nom, heures, _ in machines.liste()]
+                         for nom, heures, _, _ in machines.liste()]
     return resultat
