@@ -154,6 +154,10 @@ pourquoi chaque fiche est restée. Accents ignorés.
 Une désignation plus large que sa colonne se lit **au survol** : l'infobulle
 rend le texte entier, et seulement quand il est rogné.
 
+L'adresse du chantier se recopie de la fiche client d'un clic — bouton
+**Celle du client** — et reste modifiable : le chantier est presque toujours
+chez le client, mais pas toujours.
+
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.

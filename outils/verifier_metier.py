@@ -488,6 +488,17 @@ def main() -> int:
     verifier("et la recherche porte sur n'importe quel morceau",
              cle_recherche("ame") in cle_recherche("M. Léo MOUGEL — SAINT-AMÉ"))
 
+    print("\nAdresse du chantier")
+    from bata_plouf.adaptateurs.interface.commun import adresse_en_ligne
+    chez_lui = Client(nom="Mougel", adresse="12 Grande Rue", cp="88120",
+                      ville="SAINT-AMÉ")
+    verifier("l'adresse du client tient sur une ligne",
+             adresse_en_ligne(chez_lui) == "12 Grande Rue, 88120 SAINT-AMÉ",
+             adresse_en_ligne(chez_lui))
+    verifier("une fiche sans adresse ne rend rien à recopier",
+             adresse_en_ligne(Client(nom="Mougel")) == "")
+    verifier("ni une absence de fiche", adresse_en_ligne(None) == "")
+
     print("\nFormats et import")
     verifier("montant français", euros(1234.5) == "1 234,50 €", euros(1234.5))
     verifier("date française", date_fr("2026-10-25") == "25/10/2026")

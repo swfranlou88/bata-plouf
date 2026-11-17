@@ -539,6 +539,44 @@ def bouton(texte: str, action=None, principal: bool = False) -> QPushButton:
     return b
 
 
+def adresse_en_ligne(fiche) -> str:
+    """L'adresse d'une fiche sur une seule ligne, comme on la dicterait."""
+    morceaux = str(getattr(fiche, "adresse_complete", "") or "").split("\n")
+    return ", ".join(m.strip() for m in morceaux if m.strip())
+
+
+def bouton_copier_adresse(champ, fiche_courante, libelle="Celle du client"):
+    """Un bouton qui recopie dans « champ » l'adresse de la fiche courante.
+
+    Le chantier est presque toujours chez le client : retaper son adresse est
+    une corvée, et une occasion de se tromper sur le code postal. Le champ
+    reste modifiable après coup — on travaille aussi chez la fille du client,
+    ou sur un terrain qui n'a pas encore de numéro de rue.
+    """
+
+    def copier() -> None:
+        fiche = fiche_courante()
+        adresse = adresse_en_ligne(fiche) if fiche else ""
+        if not adresse:
+            alerter(champ.window(), "Pas d'adresse à recopier",
+                    "Ce client n'a pas d'adresse dans sa fiche."
+                    if fiche else "Choisissez d'abord un client.")
+            return
+        ancienne = champ.text().strip()
+        # Ce qui a été tapé à la main ne s'efface pas sur un clic malheureux.
+        if ancienne and ancienne != adresse and not confirmer(
+                champ.window(), "Remplacer l'adresse",
+                f"Remplacer « {ancienne} »\npar « {adresse} » ?"):
+            return
+        champ.setText(adresse)
+        champ.setFocus()
+
+    copieur = bouton(libelle, copier)
+    copieur.setToolTip("Recopie l'adresse de la fiche client ; elle reste "
+                       "modifiable")
+    return copieur
+
+
 def confirmer(parent, titre_: str, question: str) -> bool:
     reponse = QMessageBox.question(
         parent, titre_, question,

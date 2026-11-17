@@ -18,11 +18,11 @@ from ...domaine import (
 )
 from ..impression import RenduDocument
 from .commun import (
-    CENTRE, Colonne, DROITE, GAUCHE, ModeleListe, activer_le_tri, alerter,
-    barre, bouton, champ_date, champ_entier, champ_pourcent, champ_texte,
-    DelegueAmorce, amorce, cle_numero, confirmer, discret, etiquette_client,
-    infobulles_si_tronque, informer, liste_deroulante, rendre_cherchable,
-    titre, valeur_date,
+    CENTRE, Colonne, DROITE, GAUCHE, DelegueAmorce, ModeleListe,
+    activer_le_tri, alerter, amorce, barre, bouton, bouton_copier_adresse,
+    champ_date, champ_entier, champ_pourcent, champ_texte, cle_numero,
+    confirmer, discret, etiquette_client, infobulles_si_tronque, informer,
+    liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .vues import VueListe
 
@@ -343,6 +343,8 @@ class EditeurDevis(QWidget):
         self.adresse_chantier = champ_texte(
             devis.adresse_chantier,
             "adresse des travaux, si aucune fiche chantier")
+        self.copier_adresse = bouton_copier_adresse(
+            self.adresse_chantier, self._client_courant)
         self.objet = champ_texte(devis.objet, "Construction d'un garage accolé de 32 m²")
         self.date = champ_date(devis.date_devis)
         self.validite = champ_entier(devis.validite_jours or depot.societe.validite_jours, 999)
@@ -414,7 +416,8 @@ class EditeurDevis(QWidget):
         entete.addRow("Numéro", self.numero)
         entete.addRow("Client", self.client)
         entete.addRow("Chantier", self.chantier)
-        entete.addRow("Adresse chantier", self.adresse_chantier)
+        entete.addRow("Adresse chantier",
+                      barre(self.adresse_chantier, self.copier_adresse))
         entete.addRow("Objet", self.objet)
 
         droite = QFormLayout()
@@ -487,6 +490,9 @@ class EditeurDevis(QWidget):
         self.client.setCurrentIndex(max(0, index))
         self.client.blockSignals(False)
         self._changer_client()
+
+    def _client_courant(self):
+        return self.depot.client(self.client.currentData() or "")
 
     def _changer_client(self) -> None:
         client_id = self.client.currentData() or ""

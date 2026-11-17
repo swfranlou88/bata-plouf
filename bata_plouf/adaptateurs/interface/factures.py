@@ -24,10 +24,10 @@ from ...domaine import (
 )
 from ..depot_fichiers import ErreurReference
 from .commun import (
-    CENTRE, Colonne, DROITE, alerter, barre, bouton, champ_date, champ_entier,
-    champ_texte, cle_numero, confirmer, discret, informer, etiquette_client,
-    infobulles_si_tronque, liste_deroulante, rendre_cherchable, titre,
-    valeur_date,
+    CENTRE, Colonne, DROITE, alerter, barre, bouton, bouton_copier_adresse,
+    champ_date, champ_entier, champ_texte, cle_numero, confirmer, discret,
+    informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
+    rendre_cherchable, titre, valeur_date,
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TVA, COL_UNITE,
@@ -270,6 +270,8 @@ class EditeurFacture(QWidget):
         self.adresse_chantier = champ_texte(
             facture.adresse_chantier,
             "adresse des travaux, si aucune fiche chantier")
+        self.copier_adresse = bouton_copier_adresse(
+            self.adresse_chantier, self._client_courant)
         self.objet = champ_texte(facture.objet)
         self.date = champ_date(facture.date_facture)
         self.echeance = champ_entier(facture.echeance_jours, 365)
@@ -345,7 +347,8 @@ class EditeurFacture(QWidget):
         gauche.addRow("Devis d'origine", self.origine)
         gauche.addRow("Client", self.client)
         gauche.addRow("Chantier", self.chantier)
-        gauche.addRow("Adresse chantier", self.adresse_chantier)
+        gauche.addRow("Adresse chantier",
+                      barre(self.adresse_chantier, self.copier_adresse))
         gauche.addRow("Objet", self.objet)
 
         droite = QFormLayout()
@@ -423,6 +426,9 @@ class EditeurFacture(QWidget):
                 f"{devis.numero} du {date_fr(devis.date_devis)}" if devis
                 else "devis introuvable")
 
+    def _client_courant(self):
+        return self.depot.client(self.client.currentData() or "")
+
     def _changer_client(self) -> None:
         client_id = self.client.currentData() or ""
         self.chantier.clear()
@@ -440,7 +446,10 @@ class EditeurFacture(QWidget):
         accessibles ; la correction passe par un avoir.
         """
         modifiable = self.facture.modifiable
-        for widget in (self.client, self.chantier, self.objet, self.date,
+        # L'adresse du chantier se fige avec le reste : elle est imprimée sur
+        # la facture émise, et la corriger après coup la ferait mentir.
+        for widget in (self.client, self.chantier, self.adresse_chantier,
+                       self.copier_adresse, self.objet, self.date,
                        self.echeance, self.notes):
             widget.setEnabled(modifiable)
         self.tableau.setEditTriggers(
