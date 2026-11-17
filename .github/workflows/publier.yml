@@ -43,11 +43,14 @@ jobs:
             etiquette: macOS Intel
           - os: windows-latest
             etiquette: Windows
-          - os: ubuntu-latest
+          # Épinglée comme les images macOS : « ubuntu-latest » bascule sur
+          # Ubuntu 26 en octobre 2026 sans prévenir, et une construction qui
+          # change de système sous les pieds ne se diagnostique pas.
+          - os: ubuntu-24.04
             etiquette: Linux
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Qt a besoin de ces bibliothèques même sans écran : PyInstaller importe
       # PySide6 pour l'analyser, et le dessin de l'icône instancie Qt.
@@ -112,7 +115,7 @@ jobs:
         run: uv run --with pyinstaller python outils/construire.py
 
       - name: Déposer l'archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archives-${{ matrix.os }}
           path: dist/*.zip
@@ -123,12 +126,12 @@ jobs:
     name: Publier la release
     needs: construire
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Récupérer toutes les archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: archives
           merge-multiple: true
