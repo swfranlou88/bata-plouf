@@ -41,14 +41,48 @@ def normaliser(depot: str) -> str:
     mieux qu'un « introuvable ».
     """
     texte = (depot or "").strip()
-    for prefixe in ("https://github.com/", "http://github.com/",
-                    "git@github.com:", "github.com/"):
-        if texte.lower().startswith(prefixe):
-            texte = texte[len(prefixe):]
+    prefixes = ("https://github.com/", "http://github.com/", "git@github.com:",
+                "github.com/", "https://", "http://", "www.")
+    # En boucle : un copier-coller malheureux donne « https://https://… », et
+    # chaque passage n'enlève qu'une couche. Le reste du collage est bon, il
+    # n'y a pas de raison de le refuser.
+    change = True
+    while change:
+        change = False
+        for prefixe in prefixes:
+            if texte.lower().startswith(prefixe):
+                texte = texte[len(prefixe):]
+                change = True
     texte = texte.strip("/")
     if texte.endswith(".git"):
         texte = texte[:-4]
     return texte
+
+
+# Ce que le début d'un jeton dit de lui. GitHub préfixe les siens depuis
+# 2021, ce qui permet de reconnaître un jeton classique d'un jeton fin sans
+# rien demander au réseau — et sans jamais l'afficher.
+GENRES_JETON = {
+    "github_pat_": ("fin", ""),
+    "ghp_": ("classique", "Jeton classique : il lui faut la portée « repo » "
+                          "entière pour voir un dépôt privé. Un jeton fin, "
+                          "limité à ce seul dépôt, est plus sûr."),
+    "gho_": ("OAuth", "Jeton OAuth : ce n'est pas un jeton d'accès personnel."),
+    "ghs_": ("serveur", "Jeton d'application : ce n'est pas un jeton d'accès "
+                        "personnel."),
+}
+
+
+def genre_du_jeton(jeton: str) -> tuple[str, str]:
+    """Le genre du jeton et ce qu'il y a à en dire, d'après son préfixe."""
+    jeton = (jeton or "").strip()
+    if not jeton:
+        return "", ""
+    for prefixe, (genre, remarque) in GENRES_JETON.items():
+        if jeton.startswith(prefixe):
+            return genre, remarque
+    return "inconnu", ("Ce jeton ne ressemble à aucun de ceux que GitHub "
+                       "délivre — un morceau manque peut-être au collage.")
 
 
 def verifier_acces(depot: str, jeton: str) -> str:

@@ -63,6 +63,12 @@ class DialogueSecrets(QDialog):
         explication.setWordWrap(True)
         explication.setTextFormat(Qt.TextFormat.RichText)
 
+        self.controle = discret("")
+        self.controle.setWordWrap(True)
+        for champ in (self.depot_cible, self.jeton, self.phrase,
+                      self.confirmation):
+            champ.textChanged.connect(self._controler)
+
         formulaire = QFormLayout()
         formulaire.addRow("Dépôt GitHub", self.depot_cible)
         formulaire.addRow("Jeton d'écriture", self.jeton)
@@ -88,11 +94,45 @@ class DialogueSecrets(QDialog):
         disposition.setSpacing(10)
         disposition.addWidget(explication)
         disposition.addLayout(formulaire)
+        disposition.addWidget(self.controle)
         disposition.addWidget(discret(
             "Le jeton se crée sur github.com → Settings → Developer settings "
             "→ Fine-grained tokens, limité à ce seul dépôt, avec "
             "« Contents : Read and write »."))
         disposition.addWidget(boutons)
+        self._controler()
+
+    def _reproches(self) -> list[str]:
+        """Ce qui cloche dans les champs, sans toucher au réseau."""
+        dits = []
+        cible = sauvegarde_en_ligne.normaliser(self.depot_cible.text())
+        if not cible:
+            dits.append("Le dépôt reste à indiquer.")
+        elif "/" not in cible:
+            dits.append("Il manque le compte avant la barre : « compte/nom ».")
+
+        jeton = self.jeton.text().strip()
+        if not jeton:
+            dits.append("Le jeton reste à coller.")
+        else:
+            genre, remarque = sauvegarde_en_ligne.genre_du_jeton(jeton)
+            if remarque:
+                dits.append(remarque)
+            elif genre == "fin":
+                # Le seul point qu'aucun contrôle local ne peut trancher.
+                dits.append("Jeton fin reconnu. « Tester l'accès » dira si ce "
+                            "dépôt est bien coché dessus, en écriture.")
+
+        if self.phrase.text():
+            faute = reproche(self.phrase.text())
+            if faute:
+                dits.append(faute)
+            elif self.phrase.text() != self.confirmation.text():
+                dits.append("Les deux phrases de passe diffèrent.")
+        return dits
+
+    def _controler(self) -> None:
+        self.controle.setText(" ".join(self._reproches()))
 
     def _tester(self) -> None:
         """Dire ce que le jeton peut faire, avant de s'en remettre à lui."""

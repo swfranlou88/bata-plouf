@@ -27,9 +27,15 @@ def mois_courant(jour: date | None = None) -> str:
 
 
 def depot_vise(depot) -> str:
-    """Le dépôt réglé dans le profil, à défaut celui du fichier d'environnement."""
+    """Le dépôt réglé dans le profil, à défaut celui du fichier d'environnement.
+
+    Nettoyé à la lecture : une adresse collée en entier, ou collée deux fois,
+    a été enregistrée telle quelle par les versions précédentes, et elle
+    ferait échouer toutes les sauvegardes jusqu'à ce qu'on la retape.
+    """
     reglage = (getattr(depot.societe, "depot_sauvegardes", "") or "").strip()
-    return reglage or environnement.lire(depot.racine).get(environnement.DEPOT, "")
+    brut = reglage or environnement.lire(depot.racine).get(environnement.DEPOT, "")
+    return envoi.normaliser(brut)
 
 
 def prete(depot) -> bool:
@@ -95,12 +101,12 @@ def etat(depot) -> str:
     secrets = environnement.lire(depot.racine)
     if not secrets[environnement.JETON]:
         return "Il manque le jeton GitHub."
-    forme = ("chiffrée" if secrets[environnement.PHRASE]
-             else "en clair, sans phrase de passe")
+    forme = "chiffrée" if secrets[environnement.PHRASE] else "en clair"
     fait = (getattr(depot.societe, "dernier_mois_sauvegarde", "") or "").strip()
-    ou = f"Vers {depot_vise(depot)}, {forme}"
     if not fait:
-        return f"{ou} — aucune sauvegarde déposée pour l'instant."
-    if fait == mois_courant():
-        return f"{ou} — à jour, sauvegarde de {fait} déposée."
-    return f"{ou} — dernière sauvegarde : {fait}."
+        etat = "aucune encore déposée"
+    elif fait == mois_courant():
+        etat = f"à jour, {fait} déposée"
+    else:
+        etat = f"dernière : {fait}"
+    return f"{depot_vise(depot)} · {forme} · {etat}"

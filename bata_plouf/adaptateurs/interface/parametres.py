@@ -4,8 +4,8 @@ from pathlib import Path
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QFileDialog, QFormLayout, QGroupBox, QLabel, QPlainTextEdit,
-    QScrollArea, QVBoxLayout, QWidget,
+    QCheckBox, QDialog, QFileDialog, QFormLayout, QGroupBox, QLabel,
+    QPlainTextEdit, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from ...domaine import TAUX_TVA, Societe
@@ -78,6 +78,12 @@ class VueParametres(QWidget):
 
         self.etat_sauvegarde = discret(sauvegarde_mensuelle.etat(depot))
         self.etat_sauvegarde.setWordWrap(True)
+        # Sans cela, une étiquette qui passe à la ligne garde la hauteur d'une
+        # seule et se fait couper par la rangée du formulaire.
+        self.etat_sauvegarde.setSizePolicy(QSizePolicy.Policy.Preferred,
+                                           QSizePolicy.Policy.MinimumExpanding)
+        self.etat_sauvegarde.setMinimumHeight(
+            self.etat_sauvegarde.fontMetrics().height() * 2)
         self.depot_maj = champ_texte(s.depot_mises_a_jour, "compte/bata-plouf")
         self.mode_maj = liste_deroulante(
             ["auto", "demander", "jamais"], s.mises_a_jour or "auto")
