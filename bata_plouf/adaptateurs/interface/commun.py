@@ -3,17 +3,18 @@
 import unicodedata
 
 from PySide6.QtCore import (
-    QAbstractTableModel, QDate, QEvent, QItemSelectionModel, QModelIndex,
-    QObject, QSortFilterProxyModel, QTimer, Qt,
+    QAbstractTableModel, QDate, QEasingCurve, QEvent, QItemSelectionModel,
+    QModelIndex, QObject, QPropertyAnimation, QSortFilterProxyModel, QTimer,
+    Qt,
 )
 from PySide6.QtGui import (
     QColor, QFont, QFontMetrics, QPalette, QTextCharFormat,
 )
 from PySide6.QtWidgets import (
     QApplication, QCalendarWidget, QComboBox, QCompleter, QDateEdit,
-    QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QSpinBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolTip,
-    QVBoxLayout, QWidget,
+    QDoubleSpinBox, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
+    QStyleOptionViewItem, QToolTip, QVBoxLayout, QWidget,
 )
 
 from ...domaine import euros
@@ -738,6 +739,133 @@ def confirmer(parent, titre_: str, question: str) -> bool:
 
 def alerter(parent, titre_: str, message: str) -> None:
     QMessageBox.warning(parent, titre_, message)
+
+
+class Annonce(QLabel):
+    """Un mot en bas de la fenêtre, le temps d'être lu, puis plus rien.
+
+    À ne pas confondre avec les bandeaux de l'accueil, qui restent tant que
+    ce qu'ils annoncent est vrai : celle-ci passe.
+
+    Une fenêtre modale pour annoncer « c'est enregistré » arrête le travail
+    et réclame un clic pour confirmer ce qu'on voit déjà. L'annonce le dit
+    sans rien interrompre : elle paraît, se lit, s'efface. Elle reste donc
+    réservée à ce qui s'est bien passé — un refus ou une erreur méritent
+    qu'on s'arrête, et gardent leur fenêtre.
+
+    Il y en a une seule par fenêtre : un deuxième message remplace le
+    premier au lieu de s'empiler par-dessus.
+    """
+
+    MARGE = 52          # du bas de la fenêtre : au-dessus de la barre de boutons
+    PARUTION = 140      # millisecondes pour apparaître
+    EFFACEMENT = 420    # et pour s'en aller
+    DEDANS = (20, 11)   # ce qui sépare le texte du bord, horizontal et vertical
+
+    def __init__(self, fenetre: QWidget):
+        super().__init__(fenetre)
+        self.setObjectName("annonce")
+        # Elle flotte au-dessus de l'écran : elle ne doit pas prendre les
+        # clics destinés à ce qu'elle recouvre.
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setWordWrap(True)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Le gras est posé sur la police, pas dans la feuille de style : la
+        # mesure du texte doit être faite avec la police qui servira à le
+        # peindre, sinon la boîte est taillée trop court.
+        police = self.font()
+        police.setBold(True)
+        self.setFont(police)
+        self._voile = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self._voile)
+        self._fondu = QPropertyAnimation(self._voile, b"opacity", self)
+        self._fondu.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self._fondu.finished.connect(self._fondu_fini)
+        self._minuteur = QTimer(self)
+        self._minuteur.setSingleShot(True)
+        self._minuteur.timeout.connect(self._partir)
+        fenetre.installEventFilter(self)
+        self.hide()
+
+    def montrer(self, message: str, duree: int) -> None:
+        self.setText(message)
+        self.setStyleSheet(self._habit())
+        self._placer()
+        self.show()
+        self.raise_()
+        self._minuteur.start(duree)
+        self._glisser(1.0, self.PARUTION)
+
+    # --- fondu ------------------------------------------------------------
+
+    def _glisser(self, vers: float, duree: int) -> None:
+        self._fondu.stop()
+        self._fondu.setDuration(duree)
+        self._fondu.setStartValue(self._voile.opacity())
+        self._fondu.setEndValue(vers)
+        self._fondu.start()
+
+    def _partir(self) -> None:
+        self._glisser(0.0, self.EFFACEMENT)
+
+    def _fondu_fini(self) -> None:
+        # Se cacher libère le dessin ; rester visible à opacité nulle coûte
+        # un repeint à chaque rafraîchissement de la fenêtre.
+        if self._voile.opacity() <= 0.01:
+            self.hide()
+
+    # --- place et couleurs ------------------------------------------------
+
+    def _habit(self) -> str:
+        """Clair sur sombre, sombre sur clair : un bandeau se détache."""
+        fond_fenetre = self.palette().color(QPalette.ColorRole.Window)
+        sombre = fond_fenetre.lightness() < 128
+        fond = "#eceef1" if sombre else "#2b2e33"
+        encre = "#16181c" if sombre else "#f5f6f8"
+        return (f"QLabel#annonce {{ background: {fond}; color: {encre};"
+                " border-radius: 7px; padding: 10px 18px; font-weight: bold; }")
+
+    def _placer(self) -> None:
+        """Taillé au texte, centré en bas.
+
+        La taille est mesurée à la main : un QLabel qui renvoie à la ligne ne
+        sait pas deviner la largeur qu'on lui destine, et se replie en
+        colonne étroite si on le laisse faire.
+        """
+        fenetre = self.parentWidget()
+        if fenetre is None:
+            return
+        marge_h, marge_v = self.DEDANS
+        dispo = max(220, fenetre.width() - 72) - 2 * marge_h
+        mesure = QFontMetrics(self.font()).boundingRect(
+            0, 0, dispo, 4000,
+            int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignCenter),
+            self.text())
+        self.setFixedSize(mesure.width() + 2 * marge_h + 2,
+                          mesure.height() + 2 * marge_v + 2)
+        self.move(max(0, (fenetre.width() - self.width()) // 2),
+                  max(0, fenetre.height() - self.height() - self.MARGE))
+
+    def eventFilter(self, objet, evenement) -> bool:
+        if evenement.type() == QEvent.Type.Resize and self.isVisible():
+            self._placer()
+        return super().eventFilter(objet, evenement)
+
+
+def annoncer(parent, message: str, duree: int = 2600) -> None:
+    """Annonce en bas de la fenêtre ce qui vient d'être fait.
+
+    Pour ce qui s'est bien passé et n'appelle aucune décision : enregistré,
+    marqué payé, copié. Ce qui échoue ou demande un choix passe par
+    `alerter` ou `confirmer`, qui, eux, arrêtent la main.
+    """
+    fenetre = parent.window() if parent is not None else None
+    if fenetre is None:
+        return
+    annonce = fenetre.findChild(Annonce, "annonce")
+    if annonce is None or annonce.parentWidget() is not fenetre:
+        annonce = Annonce(fenetre)
+    annonce.montrer(message, duree)
 
 
 def informer(parent, titre_: str, message: str) -> None:

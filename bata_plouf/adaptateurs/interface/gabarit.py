@@ -18,7 +18,9 @@ from ...domaine.gabarit import (
 )
 from ..impression import RenduDocument
 from ...domaine import Client, Devis, Ligne, Societe, depuis_dict, en_dict
-from .commun import barre, bouton, confirmer, discret, informer, liste_deroulante, titre
+from .commun import (
+    annoncer, barre, bouton, confirmer, discret, liste_deroulante, titre,
+)
 
 # De combien un clic sur « + » agrandit l'aperçu, et jusqu'où. La borne
 # haute n'est pas un caprice : l'image est rendue à la taille demandée, et
@@ -416,8 +418,8 @@ class VueGabarit(QWidget):
     def enregistrer(self) -> None:
         self.depot.enregistrer_gabarit(self.gabarit_courant())
         self.donnees_modifiees.emit()
-        informer(self, "Modèle enregistré",
-                 "Tous les devis imprimés désormais reprendront cette présentation.")
+        annoncer(self, "Modèle enregistré — les devis imprimés reprendront "
+                 "cette présentation")
 
     # --- aperçu ----------------------------------------------------------
 

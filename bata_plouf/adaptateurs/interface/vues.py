@@ -15,7 +15,7 @@ from ...domaine import FAMILLES, TYPES_ARTICLE, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, DelegueAmorce, ModeleListe, activer_le_tri,
-    alerter, amorce, barre, bouton, cle_numero, confirmer, discret,
+    alerter, amorce, annoncer, barre, bouton, cle_numero, confirmer, discret,
     infobulles_si_tronque, liste_deroulante, titre,
 )
 from .dialogues import DialogueArticle, DialogueClient
@@ -245,8 +245,9 @@ class VueClients(VueListe):
     def nouveau(self):
         dialogue = DialogueClient(self)
         if dialogue.exec() == QDialog.DialogCode.Accepted:
-            self.depot.enregistrer_client(dialogue.resultat())
+            client = self.depot.enregistrer_client(dialogue.resultat())
             self._signaler()
+            annoncer(self, f"Client {client.nom} créé")
 
     def modifier(self):
         client = self.selection()
@@ -254,8 +255,9 @@ class VueClients(VueListe):
             return
         dialogue = DialogueClient(self, client)
         if dialogue.exec() == QDialog.DialogCode.Accepted:
-            self.depot.enregistrer_client(dialogue.resultat())
+            client = self.depot.enregistrer_client(dialogue.resultat())
             self._signaler()
+            annoncer(self, f"Client {client.nom} enregistré")
 
 
 class VueCatalogue(VueListe):
@@ -377,6 +379,7 @@ class VueCatalogue(VueListe):
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_article(dialogue.resultat())
             self._signaler()
+            annoncer(self, f"{self.type_cree.capitalize()} créé")
 
     def modifier(self):
         article = self.selection()
@@ -386,6 +389,7 @@ class VueCatalogue(VueListe):
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_article(dialogue.resultat())
             self._signaler()
+            annoncer(self, f"{self.type_cree.capitalize()} enregistré")
 
     def dupliquer(self):
         from ...domaine import Article, depuis_dict, en_dict, nouvel_id
@@ -399,6 +403,7 @@ class VueCatalogue(VueListe):
         if dialogue.exec() == QDialog.DialogCode.Accepted:
             self.depot.enregistrer_article(dialogue.resultat())
             self._signaler()
+            annoncer(self, f"{self.type_cree.capitalize()} dupliqué")
 
 
 class VueOuvrages(VueCatalogue):

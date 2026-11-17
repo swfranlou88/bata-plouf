@@ -135,6 +135,13 @@ sont d'un **bleu-vert sourd** plutôt que du gris des bordures : sur fond
 sombre, ce gris-là se noyait. La teinte se choisit d'après le thème en cours
 et se recalcule si le système bascule pendant que le logiciel tourne.
 
+Ce qui s'est bien passé se dit par une **annonce** : un message qui paraît
+en bas de la fenêtre, se lit et s'efface au bout de deux secondes et demie,
+sans rien interrompre ni rien demander. Enregistrer un devis, une facture,
+un client, un matériau ou les paramètres n'ouvre donc plus de fenêtre à
+cliquer. Les fenêtres modales restent pour ce qui mérite qu'on s'arrête :
+un refus, une erreur, une décision à prendre.
+
 L'accueil présente six catégories — clients, devis, matériaux, ouvrages,
 factures, chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie
 ouvre une liste avec création, modification et suppression — sauf les

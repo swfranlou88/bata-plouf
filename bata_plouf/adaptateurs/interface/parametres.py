@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
 
 from ...domaine import TAUX_TVA, Societe
 from .commun import (
-    alerter, barre, bouton, champ_entier, champ_pourcent, champ_texte, confirmer,
-    discret, informer, liste_deroulante, titre,
+    alerter, annoncer, barre, bouton, champ_entier, champ_pourcent, champ_texte,
+    confirmer, discret, informer, liste_deroulante, titre,
 )
 from ...adaptateurs import archive, sauvegarde_mensuelle
 from ...adaptateurs.systeme import ouvrir_dossier
@@ -405,8 +405,8 @@ class VueParametres(QWidget):
         )
         self.depot.enregistrer_societe(societe)
         self.donnees_modifiees.emit()
-        informer(self, "Paramètres enregistrés",
-                 "Les prochains devis imprimés reprendront ces informations.")
+        annoncer(self, "Paramètres enregistrés — les prochains documents "
+                 "reprendront ces informations")
 
     def rafraichir(self) -> None:
         self.dossier.setText(str(self.depot.racine))

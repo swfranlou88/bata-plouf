@@ -21,7 +21,7 @@ from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, DelegueAmorce, ModeleListe,
     activer_le_tri, alerter, amorce, barre, bouton, bouton_copier_adresse,
     champ_date, champ_entier, champ_pourcent, champ_texte, cle_numero,
-    confirmer, discret, etiquette_client, infobulles_si_tronque, informer,
+    annoncer, confirmer, discret, etiquette_client, infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .dialogues import DialogueArticle
@@ -679,8 +679,7 @@ class EditeurDevis(QWidget):
         hasard.
         """
         if self.enregistrer():
-            informer(self, "Devis enregistré",
-                     f"Le devis {self.devis.numero} est enregistré.")
+            annoncer(self, f"Devis {self.devis.numero} enregistré")
 
     def enregistrer(self) -> bool:
         self._collecter()
@@ -748,7 +747,7 @@ class EditeurDevis(QWidget):
         if not chemin:
             return
         rendu.vers_pdf(Path(chemin))
-        informer(self, "Devis enregistré", f"Le devis a été enregistré :\n{chemin}")
+        annoncer(self, f"Devis enregistré en PDF : {Path(chemin).name}")
 
     def imprimer(self) -> None:
         rendu = self._rendu()

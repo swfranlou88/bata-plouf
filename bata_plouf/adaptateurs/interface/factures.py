@@ -24,7 +24,8 @@ from ...domaine import (
 )
 from ..depot_fichiers import ErreurReference
 from .commun import (
-    CENTRE, Colonne, DROITE, alerter, barre, bouton, bouton_copier_adresse,
+    CENTRE, Colonne, DROITE, alerter, annoncer, barre, bouton,
+    bouton_copier_adresse,
     champ_date, champ_entier, champ_texte, cle_numero, confirmer, discret,
     informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
     rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
@@ -503,9 +504,8 @@ class EditeurFacture(QWidget):
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
         self.enregistre.emit()
-        informer(self, "Paiement enlevé",
-                 f"La facture {self.facture.numero} est de nouveau en attente "
-                 "de règlement.")
+        annoncer(self, f"Facture {self.facture.numero} de nouveau en attente "
+                 "de règlement")
 
     # --- verrou comptable ------------------------------------------------
 
@@ -642,8 +642,7 @@ class EditeurFacture(QWidget):
         hasard.
         """
         if self.enregistrer():
-            informer(self, "Facture enregistrée",
-                     f"La facture {self.facture.numero} est enregistrée.")
+            annoncer(self, f"Facture {self.facture.numero} enregistrée")
 
     def enregistrer(self) -> bool:
         self._collecter()
@@ -699,8 +698,7 @@ class EditeurFacture(QWidget):
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
         self.enregistre.emit()
-        informer(self, "Règlement enregistré",
-                 f"La facture {self.facture.numero} est marquée payée.")
+        annoncer(self, f"Facture {self.facture.numero} marquée payée")
 
     def creer_avoir(self) -> None:
         if self.facture.statut == "brouillon":
@@ -755,7 +753,7 @@ class EditeurFacture(QWidget):
                                                 defaut, "Document PDF (*.pdf)")
         if chemin:
             rendu.vers_pdf(Path(chemin))
-            informer(self, "Facture enregistrée", f"Enregistrée dans :\n{chemin}")
+            annoncer(self, f"Facture enregistrée en PDF : {Path(chemin).name}")
 
     def imprimer(self) -> None:
         rendu = self._rendu()
