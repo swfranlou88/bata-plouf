@@ -398,7 +398,8 @@ class EditeurFacture(QWidget):
             bouton("Aperçu avant impression", self.apercu),
             bouton("Enregistrer en PDF", self.exporter_pdf),
             bouton("Imprimer…", self.imprimer),
-            bouton("Enregistrer", self.enregistrer, principal=True),
+            bouton("Enregistrer", self._enregistrer_et_confirmer,
+                   principal=True),
         )
 
         disposition = QVBoxLayout(self)
@@ -578,6 +579,17 @@ class EditeurFacture(QWidget):
         f.notes_internes = self.notes.toPlainText().strip()
         f.mode_paiement = self.mode_paiement.currentText()
         f.date_paiement = valeur_date(self.date_paiement)
+
+    def _enregistrer_et_confirmer(self) -> None:
+        """Le bouton confirme ; l'enregistrement d'avant une impression, non.
+
+        Sans un mot, on ne sait pas si la facture est partie dans le dossier
+        ou si un champ manquant a tout retenu — et on réenregistre à tout
+        hasard.
+        """
+        if self.enregistrer():
+            informer(self, "Facture enregistrée",
+                     f"La facture {self.facture.numero} est enregistrée.")
 
     def enregistrer(self) -> bool:
         self._collecter()

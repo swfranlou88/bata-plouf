@@ -231,6 +231,8 @@ class FenetrePrincipale(QMainWindow):
         self._retour_vers = retour
         editeur.ferme.connect(self._retour_liste)
         editeur.enregistre.connect(self.tout_rafraichir)
+        if hasattr(editeur, "facturer_demande"):
+            editeur.facturer_demande.connect(self.facturer_devis)
         self.pages.addWidget(editeur)
         self.pages.setCurrentWidget(editeur)
 

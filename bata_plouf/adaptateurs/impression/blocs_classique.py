@@ -351,6 +351,21 @@ def _mentions(ctx: Contexte) -> str:
     if any(l.taux == 0.0 for l in ctx.totaux.tva):
         morceaux.append("Autoliquidation de la TVA : TVA due par le preneur, "
                         "article 283-2 nonies du CGI.")
+    if (not ctx.est_facture and g.afficher_acompte
+            and getattr(d, "acompte_pct", 0)):
+        # Le cadre des totaux finit sur le TTC : l'acompte et le solde se
+        # disent ici, avec leurs montants, pour que le client sache ce qu'il
+        # avance à la commande et ce qui restera.
+        morceaux.append(
+            f"Acompte de {nombre(d.acompte_pct)} % à la commande : "
+            f"{euros(ctx.totaux.acompte)} — solde de "
+            f"{euros(ctx.totaux.solde)} à la fin des travaux.")
+    if ctx.est_facture and getattr(d, "statut", "") == "payée":
+        # Le cadre des totaux ne porte plus de « reste dû » : c'est ici que
+        # se lit qu'il n'y a plus rien à payer.
+        regle = getattr(d, "date_paiement", "")
+        morceaux.append("Facture acquittée"
+                        + (f" le {date_fr(regle)}" if regle else ""))
     if s.iban:
         morceaux.append("IBAN " + echapper(s.iban)
                         + (f" — BIC {echapper(s.bic)}" if s.bic else ""))
@@ -373,17 +388,11 @@ def _lignes_totaux(ctx: Contexte) -> list[tuple[str, str, bool]]:
                            montant(taux.montant), False))
     else:
         lignes.append(("TVA", montant(t.total_tva), False))
+    # Et rien en dessous : c'est le total TTC qu'on cherche des yeux au bas
+    # d'un devis, et il doit être la dernière ligne du cadre. L'acompte et le
+    # solde se disent dans les conditions, à gauche ; une facture acquittée le
+    # dit dans les mentions.
     lignes.append(("TOTAL TTC", montant(t.total_ttc), True))
-
-    if ctx.est_facture:
-        if d.statut == "payée":
-            lignes.append(("RESTE DÛ", montant(0), False))
-        else:
-            lignes.append(("RESTE DÛ", montant(t.total_ttc), False))
-    elif g.afficher_acompte and d.acompte_pct:
-        lignes.append((f"ACOMPTE {nombre(d.acompte_pct)} %",
-                       montant(t.acompte), False))
-        lignes.append(("SOLDE", montant(t.solde), False))
     return lignes
 
 

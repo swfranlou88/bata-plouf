@@ -99,7 +99,9 @@ class Societe:
     iban: str = ""
     bic: str = ""
 
-    validite_jours: int = 90
+    # Six mois : un devis de maçonnerie se décide rarement en un trimestre,
+    # et son prix tient le temps d'une saison de chantiers.
+    validite_jours: int = 180
     delai_paiement_jours: int = 30
     taux_tva_defaut: float = 10.0
     acompte_defaut_pct: float = 30.0
@@ -313,7 +315,7 @@ class Devis(Archivable):
     # a la priorité.
     adresse_chantier: str = ""
     date_devis: str = field(default_factory=lambda: date.today().isoformat())
-    validite_jours: int = 90
+    validite_jours: int = 180
     statut: str = "brouillon"
     lignes: list[Ligne] = field(default_factory=list)
     remise_globale_pct: float = 0.0

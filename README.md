@@ -174,7 +174,12 @@ Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.
 
-Bouton **Facturer…** depuis la liste des devis, quatre façons :
+Un devis est **valable six mois** par défaut, et le bouton **Enregistrer**
+le confirme par un mot : sans réponse, on ne sait pas si l'enregistrement
+s'est fait ou si un champ manquant a tout retenu.
+
+Bouton **Facturer…** depuis la liste des devis ou depuis le devis ouvert,
+quatre façons :
 
 - **Facture complète** — reprend toutes les lignes du devis. Refusée si une
   partie est déjà facturée.
@@ -219,6 +224,11 @@ droite. Pas de couleur : ces documents partent sur une laser noir et blanc, où
 un aplat devient un gris qui mange le texte. Le cadre qui descend jusqu'en bas
 n'est pas qu'une habitude — il empêche qu'on ajoute une ligne après signature
 sans que cela se voie.
+
+Le cadre des totaux finit sur le **TOTAL TTC** : c'est le chiffre qu'on
+cherche des yeux au bas d'un devis, et rien ne doit le suivre. L'acompte et
+le solde se lisent en toutes lettres dans les mentions, avec leurs montants ;
+une facture réglée s'y dit acquittée.
 
 Pour changer la structure même des documents : `impression/blocs.py` (un bloc =
 une fonction) et `impression/document.py` (leur ordre).

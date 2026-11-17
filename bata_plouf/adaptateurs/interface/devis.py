@@ -394,6 +394,9 @@ class DialogueChoixArticle(QDialog):
 class EditeurDevis(QWidget):
     ferme = Signal()
     enregistre = Signal()
+    # Le devis à facturer : la fenêtre principale ouvre la suite, comme
+    # lorsque la demande vient de la liste.
+    facturer_demande = Signal(object)
 
     def __init__(self, depot, devis: Devis, parent=None):
         super().__init__(parent)
@@ -532,7 +535,9 @@ class EditeurDevis(QWidget):
             bouton("Aperçu avant impression", self.apercu),
             bouton("Enregistrer en PDF", self.exporter_pdf),
             bouton("Imprimer…", self.imprimer),
-            bouton("Enregistrer", self.enregistrer, principal=True),
+            bouton("Facturer…", self.facturer),
+            bouton("Enregistrer", self._enregistrer_et_confirmer,
+                   principal=True),
         )
 
         disposition = QVBoxLayout(self)
@@ -672,6 +677,17 @@ class EditeurDevis(QWidget):
         d.acompte_pct = self.acompte.value()
         d.notes_internes = self.notes.toPlainText().strip()
 
+    def _enregistrer_et_confirmer(self) -> None:
+        """Le bouton confirme ; l'enregistrement d'avant une impression, non.
+
+        Sans un mot, on ne sait pas si le devis est parti dans le dossier ou
+        si un champ manquant a tout retenu — et on réenregistre à tout
+        hasard.
+        """
+        if self.enregistrer():
+            informer(self, "Devis enregistré",
+                     f"Le devis {self.devis.numero} est enregistré.")
+
     def enregistrer(self) -> bool:
         self._collecter()
         if not self.devis.client_id:
@@ -681,6 +697,19 @@ class EditeurDevis(QWidget):
         self.numero.setText(self.devis.numero)
         self.enregistre.emit()
         return True
+
+    def facturer(self) -> None:
+        """Du devis à sa facture, sans repasser par la liste.
+
+        Le devis est enregistré d'abord : c'est ce qui est à l'écran qu'on
+        veut facturer, pas ce qui dormait dans le dossier.
+        """
+        if not self.enregistrer():
+            return
+        if not self.devis.lignes:
+            alerter(self, "Devis vide", "Ce devis n'a aucune ligne à facturer.")
+            return
+        self.facturer_demande.emit(self.devis)
 
     def _retour(self) -> None:
         self.enregistrer()

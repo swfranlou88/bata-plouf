@@ -9,7 +9,8 @@ from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtPdf import QPdfDocument
 from PySide6.QtWidgets import (
     QCheckBox, QColorDialog, QDoubleSpinBox, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QPlainTextEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+    QLabel, QLineEdit, QPlainTextEdit, QPushButton, QScrollArea, QStyle,
+    QVBoxLayout, QWidget,
 )
 
 from ...domaine.gabarit import (
@@ -25,6 +26,9 @@ from .commun import barre, bouton, confirmer, discret, informer, liste_deroulant
 PAS_ZOOM = 1.25
 ZOOM_MINIMAL, ZOOM_MAXIMAL = 0.4, 3.0
 LARGEUR_MAXIMALE = 2400
+
+# L'air laissé autour de la page dans l'aperçu, en points.
+MARGE_APERCU = 18
 
 
 class ApercuDepot:
@@ -474,8 +478,16 @@ class VueGabarit(QWidget):
         La largeur de référence est celle du cadre, pas celle de sa zone
         visible : une barre de défilement qui apparaît rétrécirait la seconde,
         donc l'image, donc la barre — et l'aperçu se mettrait à osciller.
+
+        Sa place lui est donc réservée d'avance, barre absente comprise. Sur
+        macOS elle flotte au-dessus du contenu : sans cela elle pose un liseré
+        gris sur le bord droit de la page, qu'on prend pour un défaut
+        d'impression.
         """
-        disponible = self.defilement_apercu.width() - 34
+        barre_ = self.defilement_apercu.style().pixelMetric(
+            QStyle.PixelMetric.PM_ScrollBarExtent, None, self.defilement_apercu)
+        disponible = (self.defilement_apercu.width()
+                      - 2 * MARGE_APERCU - max(12, barre_))
         largeur = max(360, min(1100, disponible)) * self._zoom
         largeur = max(240, min(LARGEUR_MAXIMALE, largeur))
         return QSize(int(largeur), int(largeur * 297 / 210))
