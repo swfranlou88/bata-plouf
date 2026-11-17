@@ -262,7 +262,9 @@ def restaurer(depot, chemin: Path | str) -> Rapport:
     if not inventaire.exploitable:
         raise ErreurArchive("\n".join(inventaire.problemes))
 
-    sauvegarde = depot.creer_sauvegarde()
+    # Si rien n'a changé depuis le dernier instantané, c'est lui qui
+    # tient lieu de filet : inutile d'en écrire un jumeau.
+    sauvegarde = depot.creer_sauvegarde() or depot.derniere_sauvegarde()
     abri = Path(tempfile.mkdtemp(prefix="bata-plouf-import-",
                                  dir=depot.racine.parent))
     try:

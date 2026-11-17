@@ -15,7 +15,7 @@ USB ou déposer dans iCloud :
       devis/D2026-0001.json   un fichier par devis
       factures/1451.json      un fichier par facture
       pdf/                 les devis imprimés, archivés
-      sauvegardes/         un instantané horodaté par ouverture du logiciel
+      sauvegardes/         un instantané zippé par état des données
 
 Deux règles tiennent la fiabilité de l'ensemble, faute de transactions :
   - toute écriture passe par un fichier temporaire puis un renommage atomique,
@@ -25,6 +25,7 @@ Deux règles tiennent la fiabilité de l'ensemble, faute de transactions :
 
 import json
 import os
+import hashlib
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -40,7 +41,11 @@ DOSSIER_DEFAUT = dossier_documents() / "Bata-plouf"
 # Le logiciel s'est appelé autrement avant : on récupère son dossier plutôt
 # que de laisser l'utilisateur devant une base vide.
 ANCIENS_DOSSIERS = [dossier_documents() / "DevisMacon"]
-SAUVEGARDES_CONSERVEES = 30
+# Deux : l'état précédent et le nouveau. Un filet local sert à rattraper la
+# fausse manœuvre du jour, pas à tenir des archives — celles-ci partent en
+# ligne chaque mois, chiffrées, et remontent plus loin que n'importe quelle
+# pile de copies locales.
+SAUVEGARDES_CONSERVEES = 2
 
 
 class ErreurReference(Exception):
@@ -225,29 +230,101 @@ class DepotFichiers:
 
     # --- sauvegarde complète ---------------------------------------------
 
-    def creer_sauvegarde(self) -> Path | None:
-        """Instantané horodaté du dossier de données, hors PDF et sauvegardes."""
-        if not any(self.racine.glob("*.json")) and not any(self.d_devis.glob("*.json")) \
-                and not any(self.d_factures.glob("*.json")):
+    def _fichiers_de_donnees(self) -> list[Path]:
+        return (sorted(self.racine.glob("*.json"))
+                + sorted(self.d_devis.glob("*.json"))
+                + sorted(self.d_factures.glob("*.json")))
+
+    def empreinte(self) -> str:
+        """Une signature du contenu des données, pour savoir s'il a bougé.
+
+        Sur le contenu, pas sur les dates : enregistrer un devis sans rien y
+        changer réécrit le fichier et change sa date, mais pas ce qu'il dit.
+        Trois méga-octets de JSON se hachent en quelques millisecondes.
+        """
+        signature = hashlib.sha256()
+        for fichier in self._fichiers_de_donnees():
+            signature.update(fichier.name.encode("utf-8"))
+            signature.update(fichier.read_bytes())
+        return signature.hexdigest()
+
+    def _sauvegardes_rangees(self) -> list[Path]:
+        """Les instantanés, du plus ancien au plus récent.
+
+        Rangés par date d'écriture, pas par nom : « 15h37-50-2.zip » précède
+        « 15h37-50.zip » dans l'ordre alphabétique, et la purge jetterait
+        alors le plus récent des deux.
+        """
+        if not self.d_sauvegardes.is_dir():
+            return []
+        existantes = [p for p in self.d_sauvegardes.iterdir()
+                      if not p.name.startswith(".")]
+        return sorted(existantes, key=lambda p: p.stat().st_mtime)
+
+    def derniere_sauvegarde(self) -> Path | None:
+        """La sauvegarde locale la plus récente, zip ou ancien dossier."""
+        rangees = self._sauvegardes_rangees()
+        return rangees[-1] if rangees else None
+
+    def creer_sauvegarde(self, forcer: bool = False) -> Path | None:
+        """Instantané zippé des données. None si rien n'a changé depuis le dernier.
+
+        Rien n'oblige à garder trente copies d'un même état : ouvrir le
+        logiciel sans rien modifier n'est pas un événement, et chaque copie
+        inutile chassait un vrai état antérieur de la liste.
+        """
+        from . import archive
+
+        if not self._fichiers_de_donnees():
             return None
-        cible = self.d_sauvegardes / datetime.now().strftime("%Y-%m-%d_%Hh%M")
-        if cible.exists():
-            return cible
-        for sous_dossier in ("devis", "factures"):
-            (cible / sous_dossier).mkdir(parents=True, exist_ok=True)
-        for fichier in self.racine.glob("*.json"):
-            shutil.copy2(fichier, cible / fichier.name)
-        for fichier in self.d_devis.glob("*.json"):
-            shutil.copy2(fichier, cible / "devis" / fichier.name)
-        for fichier in self.d_factures.glob("*.json"):
-            shutil.copy2(fichier, cible / "factures" / fichier.name)
+        empreinte = self.empreinte()
+        if not forcer and empreinte == self._empreinte_gardee():
+            # Rien de neuf à écrire, mais le ménage reste à faire : c'est par
+            # là que les trente instantanés d'avant finiront par partir.
+            self._purger_sauvegardes()
+            return None
+
+        # Les secondes font partie du nom, et un rang s'ajoute au besoin :
+        # deux états distincts dans la même seconde — ce qui arrive en
+        # restaurant une archive — ne doivent pas s'écraser l'un l'autre
+        # alors qu'on n'en garde que deux.
+        quand = datetime.now().strftime("%Y-%m-%d_%Hh%M-%S")
+        cible = self.d_sauvegardes / f"{quand}.zip"
+        rang = 2
+        while cible.exists():
+            cible = self.d_sauvegardes / f"{quand}-{rang}.zip"
+            rang += 1
+        self.d_sauvegardes.mkdir(parents=True, exist_ok=True)
+        # Le même format que l'export et la sauvegarde en ligne : une archive
+        # de secours doit se rouvrir par le chemin habituel, pas par un autre.
+        archive.ecrire(self, cible)
+        self._garder_empreinte(empreinte)
         self._purger_sauvegardes()
         return cible
 
+    def _fichier_empreinte(self) -> Path:
+        return self.d_sauvegardes / ".empreinte"
+
+    def _empreinte_gardee(self) -> str:
+        try:
+            return self._fichier_empreinte().read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+
+    def _garder_empreinte(self, empreinte: str) -> None:
+        try:
+            self._fichier_empreinte().write_text(empreinte, encoding="utf-8")
+        except OSError:
+            pass  # sans elle, on sauvegardera une fois de trop, rien de grave
+
     def _purger_sauvegardes(self) -> None:
-        anciennes = sorted((d for d in self.d_sauvegardes.iterdir() if d.is_dir()))
-        for dossier in anciennes[:-SAUVEGARDES_CONSERVEES]:
-            shutil.rmtree(dossier, ignore_errors=True)
+        # Les anciens instantanés étaient des dossiers : ils vieillissent dans
+        # la même file que les zip, et s'effacent par le même compte.
+        for vieille in self._sauvegardes_rangees()[:-SAUVEGARDES_CONSERVEES]:
+            if vieille.is_dir():
+                shutil.rmtree(vieille, ignore_errors=True)
+            else:
+                vieille.unlink(missing_ok=True)
 
     def exporter_vers(self, destination: Path) -> Path:
         """Copie complète des données vers un disque externe, un dossier iCloud…"""

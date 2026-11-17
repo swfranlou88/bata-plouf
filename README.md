@@ -66,8 +66,16 @@ Récupérer les modifications : `git pull`.
 
 Tout est dans `~/Documents/Bata-plouf/`, en JSON lisible : `clients.json`,
 `chantiers.json`, `articles.json`, `parametres.json`, `modele-devis.json`,
-puis un fichier par devis et par facture, les PDF imprimés, et un instantané
-horodaté à chaque ouverture dans `sauvegardes/`.
+puis un fichier par devis et par facture, les PDF imprimés, et deux
+instantanés zippés dans `sauvegardes/`.
+
+**Deux**, et seulement quand les données ont changé : l'état précédent et le
+nouveau. Ouvrir le logiciel sans rien modifier n'écrit rien — sinon chaque
+lancement à vide chassait un vrai état antérieur, et trente copies d'un même
+fichier pesaient 140 Mo pour une seule information. Le filet local sert à
+rattraper la fausse manœuvre du jour ; l'historique, lui, part en ligne
+chaque mois. Un instantané est une archive au même format que l'export : il
+se rouvre par **Paramètres → « Importer un zip »**.
 
 Ce dossier se copie tel quel sur une clé USB. Il vit **en dehors** de
 l'application : reconstruire ou remplacer le `.app` n'y touche pas.

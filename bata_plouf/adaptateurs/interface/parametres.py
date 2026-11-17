@@ -211,10 +211,19 @@ class VueParametres(QWidget):
 
     def _sauvegarder(self) -> None:
         cible = self.depot.creer_sauvegarde()
-        if cible is None:
-            informer(self, "Rien à sauvegarder", "Le dossier de données est encore vide.")
-        else:
+        if cible is not None:
             informer(self, "Sauvegarde créée", f"Instantané enregistré dans :\n{cible}")
+            return
+        derniere = self.depot.derniere_sauvegarde()
+        if derniere is None:
+            informer(self, "Rien à sauvegarder",
+                     "Le dossier de données est encore vide.")
+            return
+        # Une copie identique de plus chasserait un vrai état antérieur de
+        # la liste : on le dit plutôt que de faire semblant.
+        informer(self, "Rien n'a changé",
+                 "Les données n'ont pas bougé depuis la dernière sauvegarde :"
+                 f"\n{derniere.name}")
 
     def _exporter(self) -> None:
         dossier = QFileDialog.getExistingDirectory(

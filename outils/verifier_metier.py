@@ -620,6 +620,36 @@ def main() -> int:
              adresse_en_ligne(Client(nom="Mougel")) == "")
     verifier("ni une absence de fiche", adresse_en_ligne(None) == "")
 
+    print("\nInstantanés locaux")
+    from bata_plouf.adaptateurs.depot_fichiers import SAUVEGARDES_CONSERVEES
+
+    atelier_local = atelier / "instantanes"
+    local = DepotFichiers(atelier_local)
+    local.charger()
+    # Le profil est écrit avant le premier instantané : sinon le réécrire
+    # plus bas créerait un fichier, ce qui est une vraie modification.
+    local.enregistrer_societe(local.societe)
+    local.enregistrer_client(Client(nom="Mougel", ville="SAINT-AMÉ"))
+    premier = local.creer_sauvegarde()
+    verifier("un instantané est une archive zip",
+             premier is not None and premier.suffix == ".zip")
+    verifier("deux lancements sans modification n'en font pas deux",
+             local.creer_sauvegarde() is None)
+    local.enregistrer_societe(local.societe)
+    verifier("réécrire à l'identique ne compte pas comme une modification",
+             local.creer_sauvegarde() is None)
+    local.enregistrer_client(Client(nom="Richard", ville="VAGNEY"))
+    verifier("une vraie modification, un vrai instantané",
+             local.creer_sauvegarde() is not None)
+    for rang in range(SAUVEGARDES_CONSERVEES + 3):
+        local.enregistrer_client(Client(nom=f"Client {rang}"))
+        local.creer_sauvegarde()
+    verifier(f"et il n'en reste que {SAUVEGARDES_CONSERVEES}",
+             len(local._sauvegardes_rangees()) == SAUVEGARDES_CONSERVEES,
+             str(len(local._sauvegardes_rangees())))
+    verifier("le dernier se rouvre comme une archive ordinaire",
+             archive.inspecter(local.derniere_sauvegarde()).exploitable)
+
     print("\nSauvegarde chiffrée")
     from bata_plouf.adaptateurs import coffre, environnement
     from bata_plouf.adaptateurs import sauvegarde_mensuelle as mensuelle
