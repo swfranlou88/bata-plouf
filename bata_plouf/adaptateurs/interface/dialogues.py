@@ -12,6 +12,7 @@ from ...domaine import (
     TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre,
 )
 from ...domaine.chantier import est_du_temps
+from ..impression.styles import echapper
 from .commun import (
     CENTRE, DROITE, GAUCHE, barre, bouton, champ_date, champ_euros,
     champ_texte, discret, etiquette_client, infobulles_si_tronque,
@@ -237,17 +238,26 @@ class DialogueBase(QDialog):
         if not ecarts:
             return "quitter"
 
-        detail = "\n".join(
-            f"· {nom} : {avant or '(vide)'} → {apres or '(vide)'}"
-            for nom, avant, apres in ecarts[:8])
-        if len(ecarts) > 8:
-            detail += f"\n· … et {len(ecarts) - 8} autre(s)"
+        def court(valeur: str) -> str:
+            # Une désignation d'ouvrage fait cent caractères : on en montre
+            # assez pour reconnaître ce qui change, pas la ligne entière.
+            valeur = valeur or "(vide)"
+            return valeur if len(valeur) <= 58 else valeur[:55] + "…"
+
+        lignes = "".join(
+            f"<tr><td style='padding-right:10px;'><b>{echapper(nom)}</b></td>"
+            f"<td>{echapper(court(avant))} &rarr; "
+            f"<b>{echapper(court(apres))}</b></td></tr>"
+            for nom, avant, apres in ecarts[:10])
+        reste = ("" if len(ecarts) <= 10 else
+                 f"<p>… et {len(ecarts) - 10} autre(s).</p>")
 
         boite = QMessageBox(self)
         boite.setWindowTitle("Modifications non enregistrées")
         boite.setIcon(QMessageBox.Icon.Warning)
-        boite.setText("Cette fiche a été modifiée.")
-        boite.setInformativeText(detail)
+        boite.setTextFormat(Qt.TextFormat.RichText)
+        boite.setText("Les éléments suivants ont été modifiés :")
+        boite.setInformativeText(f"<table cellspacing='0'>{lignes}</table>{reste}")
         garder = boite.addButton("Enregistrer et quitter",
                                  QMessageBox.ButtonRole.AcceptRole)
         jeter = boite.addButton("Quitter sans enregistrer",
