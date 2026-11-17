@@ -225,6 +225,11 @@ un aplat devient un gris qui mange le texte. Le cadre qui descend jusqu'en bas
 n'est pas qu'une habitude — il empêche qu'on ajoute une ligne après signature
 sans que cela se voie.
 
+Dix-huit millimètres de blanc sur les côtés : à douze, le cadre du tableau
+frôlait le bord de la feuille. Deux documents denses des années passées —
+trente-cinq et trente-huit lignes — se réimpriment du coup sur deux pages ;
+les marges se règlent écran « Modèle du devis » pour qui préfère l'inverse.
+
 Le cadre des totaux finit sur le **TOTAL TTC** : c'est le chiffre qu'on
 cherche des yeux au bas d'un devis, et rien ne doit le suivre. L'acompte et
 le solde se lisent en toutes lettres dans les mentions, avec leurs montants ;

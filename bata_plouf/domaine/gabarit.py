@@ -110,8 +110,11 @@ MODELES_PREDEFINIS: dict[str, dict] = {
         "tableau_pleine_hauteur": True,
         "afficher_signature": False, "afficher_pied": False,
         "afficher_recapitulatif_marche": False,
-        "marge_gauche": 12.0, "marge_haute": 10.0,
-        "marge_droite": 12.0, "marge_basse": 10.0,
+        # Dix-huit millimètres de blanc sur les côtés : à douze, le cadre du
+        # tableau frôlait le bord de la feuille, et une imprimante qui tire
+        # d'un millimètre rognait le filet de droite.
+        "marge_gauche": 18.0, "marge_haute": 10.0,
+        "marge_droite": 18.0, "marge_basse": 10.0,
     },
     "Bleu bâtiment": {
         "couleur": "#1f4e79", "police": "Helvetica", "taille_police": 9.5,
