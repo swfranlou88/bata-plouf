@@ -541,6 +541,23 @@ def teinte_discrete(palette=None) -> str:
             else TEINTE_DISCRETE_CLAIRE)
 
 
+# L'orange des champs qu'on vient de modifier : assez chaud pour sauter aux
+# yeux parmi des intitulés gris, assez sourd pour ne pas crier comme une
+# erreur. Deux valeurs, comme pour les textes discrets : sur fond sombre il
+# faut l'éclaircir, sinon il se confond avec le brun du décor.
+TEINTE_MODIFIEE_SOMBRE = "#f0a44f"
+TEINTE_MODIFIEE_CLAIRE = "#b35f10"
+
+
+def teinte_modifiee(palette=None) -> str:
+    """La couleur qui marque un champ modifié, selon le thème en cours."""
+    if palette is None:
+        palette = QApplication.palette()
+    fond = palette.color(QPalette.ColorRole.Window)
+    return (TEINTE_MODIFIEE_SOMBRE if fond.lightness() < 128
+            else TEINTE_MODIFIEE_CLAIRE)
+
+
 class Discret(QLabel):
     """Un texte de second plan, lisible en thème clair comme en sombre.
 

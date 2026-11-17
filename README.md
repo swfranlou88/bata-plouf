@@ -200,6 +200,9 @@ et TTC.
 
 ## Devis et factures
 
+Dans une fiche, l'intitulé d'un champ modifié passe en **orange** : on voit
+d'un coup d'œil ce qu'on a touché, et revenir à la valeur d'origine l'éteint.
+
 Dans une fiche, **Entrée ne ferme rien** : on tape un prix, on confirme le
 champ, la fiche reste ouverte — aucun bouton n'y est « par défaut ». Et
 **sortir sans enregistrer se demande** : Annuler, Échap ou la croix font

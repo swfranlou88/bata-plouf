@@ -16,7 +16,7 @@ from ..impression.styles import echapper
 from .commun import (
     CENTRE, DROITE, GAUCHE, barre, bouton, champ_date, champ_euros,
     champ_texte, discret, etiquette_client, infobulles_si_tronque,
-    liste_deroulante, rendre_cherchable, valeur_date,
+    liste_deroulante, rendre_cherchable, teinte_modifiee, valeur_date,
 )
 
 # La marge de la maison, appliquée au prix d'achat pour proposer le prix de
@@ -208,6 +208,56 @@ class DialogueBase(QDialog):
     def retenir_depart(self) -> None:
         """À appeler une fois la fiche remplie : l'état à comparer plus tard."""
         self._depart = self.champs()
+        self._veiller()
+
+    # --- marquer ce qui a changé -----------------------------------------
+
+    def _veiller(self) -> None:
+        """Écoute tout ce qui peut changer dans le formulaire."""
+        for rang in range(self.formulaire.rowCount()):
+            champ = self.formulaire.itemAt(rang, QFormLayout.ItemRole.FieldRole)
+            if champ is not None and champ.widget() is not None:
+                self._ecouter(champ.widget())
+
+    def _ecouter(self, widget) -> None:
+        # Chaque sorte de champ annonce ses changements à sa façon : on
+        # branche ce qui existe plutôt que de tenir une liste par type.
+        for nom in ("textChanged", "currentTextChanged", "valueChanged",
+                    "toggled"):
+            signal = getattr(widget, nom, None)
+            if signal is not None and hasattr(signal, "connect"):
+                signal.connect(lambda *_: self._marquer())
+        modele = getattr(widget, "model", None)
+        modele = modele() if callable(modele) else None
+        if modele is not None:
+            for nom in ("dataChanged", "modelReset", "rowsInserted",
+                        "rowsRemoved"):
+                signal = getattr(modele, nom, None)
+                if signal is not None:
+                    signal.connect(lambda *_: self._marquer())
+        if isinstance(widget, QWidget) and not isinstance(widget, QLabel):
+            for enfant in widget.findChildren(
+                    QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+                if not isinstance(enfant, QLabel):
+                    self._ecouter(enfant)
+
+    def _marquer(self) -> None:
+        """Met en orange l'intitulé des champs qui ne sont plus d'origine."""
+        if self._depart is None:
+            return
+        maintenant = self.champs()
+        teinte = teinte_modifiee(self.palette())
+        for rang in range(self.formulaire.rowCount()):
+            intitule = self.formulaire.itemAt(rang, QFormLayout.ItemRole.LabelRole)
+            if intitule is None or not isinstance(intitule.widget(), QLabel):
+                continue
+            etiquette = intitule.widget()
+            nom = etiquette.text().strip()
+            if not nom:
+                continue
+            change = maintenant.get(nom, "") != self._depart.get(nom, "")
+            etiquette.setStyleSheet(
+                f"color: {teinte}; font-weight: bold;" if change else "")
 
     def showEvent(self, evenement) -> None:
         # Au premier affichage, et pas dans le constructeur : chaque fiche
