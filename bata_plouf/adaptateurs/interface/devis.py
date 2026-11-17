@@ -3,7 +3,7 @@
 from decimal import Decimal
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QTimer, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 from PySide6.QtWidgets import (
@@ -24,6 +24,7 @@ from .commun import (
     confirmer, discret, etiquette_client, infobulles_si_tronque, informer,
     liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
+from .dialogues import DialogueArticle
 from .vues import VueListe
 
 COL_DESIGNATION, COL_QUANTITE, COL_UNITE, COL_PU, COL_TVA, COL_REMISE, COL_TOTAL = range(7)
@@ -70,6 +71,10 @@ class ModeleLignes(QAbstractTableModel):
         if ligne is None:
             return base
         if index.column() == COL_DESIGNATION:
+            # Celle d'un ouvrage n'est pas un texte libre : elle se corrige
+            # dans la fiche de la bibliothèque, au double-clic.
+            if ligne.article_id:
+                return base
             return base | Qt.ItemFlag.ItemIsEditable
         if index.column() == COL_TOTAL:
             return base
@@ -223,6 +228,67 @@ class DelegueChoix(QStyledItemDelegate):
 
     def setModelData(self, editeur, modele, index):
         modele.setData(index, editeur.currentData(), Qt.ItemDataRole.EditRole)
+
+
+# --- la fiche derrière une ligne ------------------------------------------
+
+
+# Ce que la fiche de bibliothèque dicte à la ligne qui en vient, et sous quel
+# nom le dire à qui s'apprête à reporter.
+REPORTS = [
+    ("designation", None, "nom", str),
+    ("detail", None, "détail imprimé", str),
+    ("unite", None, "unité", str),
+    ("prix_unitaire", "prix_vente", "prix unitaire", euros),
+    ("taux_tva", None, "TVA", taux_tva_txt),
+]
+
+
+def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
+    """Ouvre la fiche de bibliothèque dont vient une ligne.
+
+    Ce qui y change ne descend pas tout seul sur le document : une ligne de
+    devis est une copie, et le prix d'un devis parti chez le client n'a pas
+    à bouger parce qu'on a réajusté un tarif six mois plus tard. On propose
+    donc le report, en disant ce qu'il changerait.
+
+    Rend vrai si la ligne a été modifiée.
+    """
+    article = depot.article(ligne.article_id) if ligne.article_id else None
+    if article is None:
+        # Sa fiche a disparu de la bibliothèque : sans cela la ligne resterait
+        # prisonnière d'un lien mort, ni modifiable ici ni ouvrable là-bas.
+        if ligne.article_id and confirmer(
+                parent, "Fiche introuvable",
+                "L'ouvrage de cette ligne n'est plus dans la bibliothèque.\n\n"
+                "Modifier le texte de la ligne à la place ?"):
+            ligne.article_id = ""
+            return True
+        return False
+    dialogue = DialogueArticle(parent, depot, article)
+    if dialogue.exec() != QDialog.DialogCode.Accepted:
+        return False
+    fiche = depot.enregistrer_article(dialogue.resultat())
+    if not reportable:
+        return False
+
+    ecarts = []
+    for champ, source, libelle, montrer in REPORTS:
+        valeur = getattr(fiche, source or champ)
+        if getattr(ligne, champ) != valeur:
+            ecarts.append((champ, valeur, libelle, montrer))
+    if not ecarts:
+        return False
+    detail = "\n".join(
+        f"· {libelle} : {montrer(getattr(ligne, champ)) or '—'} → {montrer(valeur)}"
+        for champ, valeur, libelle, montrer in ecarts)
+    if not confirmer(parent, "Reporter sur cette ligne",
+                     "La fiche a changé. Reporter aussi sur la ligne de ce "
+                     f"document ?\n\n{detail}"):
+        return False
+    for champ, valeur, _, _ in ecarts:
+        setattr(ligne, champ, valeur)
+    return True
 
 
 # --- choix dans la bibliothèque de prix -----------------------------------
@@ -380,6 +446,8 @@ class EditeurDevis(QWidget):
         self.tableau.setItemDelegateForColumn(COL_UNITE, DelegueChoix(UNITES, self))
         self.tableau.setItemDelegateForColumn(
             COL_TVA, DelegueChoix(TAUX_TVA, self, formateur=taux_tva_txt))
+        # La désignation d'un ouvrage ouvre sa fiche au lieu de s'éditer.
+        self.tableau.doubleClicked.connect(self._double_clic)
 
         # La désignation prend toute la place restante, les colonnes chiffrées
         # gardent une largeur fixe pour rester lisibles.
@@ -504,6 +572,20 @@ class EditeurDevis(QWidget):
         self.chantier.setCurrentIndex(max(0, index))
 
     # --- lignes ----------------------------------------------------------
+
+    def _double_clic(self, index) -> None:
+        """Le double-clic sur la désignation d'un ouvrage ouvre son ouvrage."""
+        if index.column() == COL_DESIGNATION:
+            # La fiche attend la fin du double-clic pour s'ouvrir.
+            QTimer.singleShot(0, lambda: self._fiche_de_la_ligne(index.row()))
+
+    def _fiche_de_la_ligne(self, rang: int) -> None:
+        ligne = self.modele.ligne(rang)
+        if ligne is None:
+            return
+        if ouvrir_fiche_de_la_ligne(self, self.depot, ligne, True):
+            self.modele.dataChanged.emit(self.modele.index(rang, 0),
+                                         self.modele.index(rang, COL_TOTAL))
 
     def _position_insertion(self) -> int | None:
         indexes = self.tableau.selectionModel().selectedRows()

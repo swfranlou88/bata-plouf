@@ -160,6 +160,15 @@ L'adresse du chantier se recopie de la fiche client d'un clic — bouton
 **Celle du client** — et reste modifiable : le chantier est presque toujours
 chez le client, mais pas toujours.
 
+Double-cliquer sur la désignation d'une ligne venue d'un ouvrage ouvre
+**l'ouvrage**, pas le texte de la ligne : c'est le nom ou le prix de la
+bibliothèque qu'on vient corriger, et la correction servira aux devis
+suivants. Ce qui y change ne descend pas tout seul sur le document — une
+ligne est une copie, et le prix d'un devis parti chez le client n'a pas à
+bouger six mois plus tard : le report est proposé, en disant ce qu'il
+changerait. Les titres de lot, les textes libres et les lignes reprises de
+l'ancien logiciel gardent la saisie directe.
+
 Le devis accepte des sections par lot, des lignes chiffrées, des textes libres,
 une remise par ligne et une remise globale. La TVA est **par ligne** : 20 %
 neuf, 10 % rénovation, 5,5 % rénovation énergétique, 0 % autoliquidation.

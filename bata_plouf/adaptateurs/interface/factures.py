@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel,
@@ -30,8 +30,9 @@ from .commun import (
     rendre_cherchable, titre, valeur_date,
 )
 from .devis import (
-    COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TVA, COL_UNITE,
-    DelegueChoix, DelegueNombre, ModeleLignes,
+    COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TOTAL, COL_TVA,
+    COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes,
+    ouvrir_fiche_de_la_ligne,
 )
 from .vues import VueListe
 
@@ -305,6 +306,7 @@ class EditeurFacture(QWidget):
         self.tableau.setItemDelegateForColumn(COL_UNITE, DelegueChoix(UNITES, self))
         self.tableau.setItemDelegateForColumn(
             COL_TVA, DelegueChoix(TAUX_TVA, self, formateur=taux_tva_txt))
+        self.tableau.doubleClicked.connect(self._double_clic)
         entetes = self.tableau.horizontalHeader()
         entetes.setSectionResizeMode(COL_DESIGNATION, QHeaderView.ResizeMode.Stretch)
         for colonne, largeur in ((COL_QUANTITE, 90), (COL_UNITE, 80), (COL_PU, 110),
@@ -425,6 +427,19 @@ class EditeurFacture(QWidget):
             self.origine.setText(
                 f"{devis.numero} du {date_fr(devis.date_devis)}" if devis
                 else "devis introuvable")
+
+    def _double_clic(self, index) -> None:
+        """Le double-clic sur la désignation d'un ouvrage ouvre son ouvrage."""
+        if index.column() == COL_DESIGNATION:
+            QTimer.singleShot(0, lambda: self._fiche_de_la_ligne(index.row()))
+
+    def _fiche_de_la_ligne(self, rang: int) -> None:
+        ligne = self.modele.ligne(rang)
+        if ligne is None:
+            return
+        if ouvrir_fiche_de_la_ligne(self, self.depot, ligne, self.facture.modifiable):
+            self.modele.dataChanged.emit(self.modele.index(rang, 0),
+                                         self.modele.index(rang, COL_TOTAL))
 
     def _client_courant(self):
         return self.depot.client(self.client.currentData() or "")
