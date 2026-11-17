@@ -244,9 +244,12 @@ class DialogueBase(QDialog):
             valeur = valeur or "(vide)"
             return valeur if len(valeur) <= 58 else valeur[:55] + "…"
 
+        # Une ligne vide entre chaque écart : collés, ils se lisent comme un
+        # paragraphe, et l'œil ne retrouve plus où commence le suivant.
         lignes = "".join(
-            f"<tr><td style='padding-right:10px;'><b>{echapper(nom)}</b></td>"
-            f"<td>{echapper(court(avant))} &rarr; "
+            f"<tr><td style='padding-right:10px; padding-bottom:9px;'>"
+            f"<b>{echapper(nom)}</b></td>"
+            f"<td style='padding-bottom:9px;'>{echapper(court(avant))} &rarr; "
             f"<b>{echapper(court(apres))}</b></td></tr>"
             for nom, avant, apres in ecarts[:10])
         reste = ("" if len(ecarts) <= 10 else
