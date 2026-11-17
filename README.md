@@ -292,6 +292,13 @@ frôlait le bord de la feuille. Deux documents denses des années passées —
 trente-cinq et trente-huit lignes — se réimpriment du coup sur deux pages ;
 les marges se règlent écran « Modèle du devis » pour qui préfère l'inverse.
 
+Un devis qui porte des lignes au **taux réduit** — 10 % en rénovation,
+5,5 % en rénovation énergétique — demande l'attestation signée du client
+(articles 279-0 bis et 278-0 bis A du CGI). La phrase s'imprime alors toute
+seule, et seulement alors : elle était figée dans le texte des devis repris,
+donc imprimée aussi sur des devis au taux normal. Une facture ne la réclame
+pas : l'attestation accompagne le devis.
+
 Le cadre des totaux finit sur le **TOTAL TTC** : c'est le chiffre qu'on
 cherche des yeux au bas d'un devis, et rien ne doit le suivre. L'acompte et
 le solde se lisent en toutes lettres dans les mentions, avec leurs montants ;

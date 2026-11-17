@@ -13,6 +13,7 @@ from ...domaine.gabarit import Gabarit
 from ...domaine import (
     Devis, Facture, Ligne, date_fr, euros, nombre, sous_totaux_sections, taux_tva_txt,
 )
+from ...domaine.calculs import taux_reduit
 from .styles import Palette, echapper, espace, mm_en_px_css, palette
 
 
@@ -349,6 +350,8 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
         texte = d.mentions or s.mentions_devis
         if texte:
             gauche.append(f"<b>Mentions</b><br>{echapper(texte)}")
+    if not ctx.est_facture and taux_reduit(d):
+        gauche.append("<i>Travaux au taux réduit : merci de joindre l'attestation, datée et signée.</i>")
     if any(l.taux == 0.0 for l in t.tva):
         gauche.append("<i>Autoliquidation de la TVA : TVA due par le preneur, "
                       "article 283-2 nonies du CGI.</i>")

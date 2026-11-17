@@ -21,6 +21,7 @@ reçoit le contexte et rend du HTML. L'assemblage est dans document.py.
 from decimal import Decimal
 
 from ...domaine import Ligne, date_fr, euros, nombre
+from ...domaine.calculs import taux_reduit
 from .blocs import Contexte, conditions_par_defaut
 from .styles import echapper, mm_en_px_css
 
@@ -348,6 +349,11 @@ def _mentions(ctx: Contexte) -> str:
                                else s.mentions_devis)
         if texte:
             morceaux.append(echapper(texte))
+    if not ctx.est_facture and taux_reduit(d):
+        # L'attestation ne vaut que pour le taux réduit : elle était écrite
+        # en dur dans les conditions des devis repris, donc imprimée aussi
+        # sur des devis au taux normal. C'est une règle, pas un texte.
+        morceaux.append("Travaux au taux réduit : merci de joindre l'attestation, datée et signée.")
     if any(l.taux == 0.0 for l in ctx.totaux.tva):
         morceaux.append("Autoliquidation de la TVA : TVA due par le preneur, "
                         "article 283-2 nonies du CGI.")

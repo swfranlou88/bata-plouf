@@ -86,3 +86,19 @@ def sous_totaux_sections(document) -> dict[str, Decimal]:
         elif ligne.chiffree and section_courante:
             resultat[section_courante] += ligne.total_ht
     return resultat
+
+# --- taux réduits et attestation ------------------------------------------
+
+# Les travaux au taux réduit — 10 % pour la rénovation, 5,5 % pour les
+# travaux d'économie d'énergie — ne s'appliquent que sur présentation d'une
+# attestation signée du client (articles 279-0 bis et 278-0 bis A du CGI).
+# C'est elle qu'on joint au devis, et elle n'a rien à faire sur un devis au
+# taux normal.
+TAUX_REDUITS = (10.0, 5.5)
+
+
+def taux_reduit(document) -> bool:
+    """Le document porte-t-il au moins une ligne à taux réduit ?"""
+    return any(l.taux_tva in TAUX_REDUITS
+               for l in getattr(document, "lignes", []) or []
+               if getattr(l, "chiffree", False))

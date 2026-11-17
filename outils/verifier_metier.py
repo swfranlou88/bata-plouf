@@ -374,6 +374,19 @@ def main() -> int:
              "TOTAL HT" in page and "TOTAL TTC" in page)
     verifier("l'adresse du client est imprimée", "Cambon" in page)
 
+    facture_classique = html_document(depot, totale)
+    verifier("l'attestation est demandée sur un devis au taux réduit",
+             "attestation" in page.lower(),
+             "taux du devis d'essai : "
+             + str(sorted({l.taux_tva for l in simple.lignes if l.chiffree})))
+    taux_normal = depuis_dict(Devis, en_dict(simple))
+    for ligne in taux_normal.lignes:
+        ligne.taux_tva = 20.0
+    verifier("mais pas sur un devis au taux normal",
+             "attestation" not in html_document(depot, taux_normal).lower())
+    verifier("ni sur une facture, qui ne la réclame plus",
+             "attestation" not in facture_classique.lower())
+
     verifier("et il finit sur le total TTC",
              "RESTE DÛ" not in page and "SOLDE" not in page)
     # La phrase chiffrée, à ne pas confondre avec les conditions de paiement
@@ -382,7 +395,6 @@ def main() -> int:
              "% à la commande :" in page and "solde de" in page,
              "acompte du devis d'essai : " + str(simple.acompte_pct))
 
-    facture_classique = html_document(depot, totale)
     verifier("une facture ne réclame pas d'acompte",
              "% à la commande :" not in facture_classique)
     totale.statut = "payée"

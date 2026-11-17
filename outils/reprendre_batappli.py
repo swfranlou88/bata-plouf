@@ -241,6 +241,34 @@ def postes(enregs: list[bytes], Ligne) -> tuple[list, float]:
     return resultat, round(derive, 2)
 
 
+# Deux phrases que l'ancien logiciel recopiait dans les conditions de chaque
+# devis, et qui n'ont rien à y faire :
+#
+#   — « Acompte de 30 % pour la commande des matériaux » n'était pas sur les
+#     documents d'origine ; l'acompte se dit déjà dans le cadre des totaux et
+#     dans les conditions du profil ;
+#   — « accompagné de l'attestation jointe » ne vaut que pour les travaux au
+#     taux réduit. Figée dans le texte, elle s'imprimait aussi sur des devis
+#     au taux normal. C'est devenu une règle, appliquée à l'impression selon
+#     la TVA du document.
+PHRASES_RETIREES = (
+    re.compile(r"\s*Acompte de\s*[0-9]+\s*%\s*pour la commande des "
+               r"mat[ée]riaux[^.\n]*\.?", re.I),
+    re.compile(r"\s*acco[nm]pagn[ée]e?\s+de l'attestation jointe", re.I),
+)
+
+
+def nettoyer_conditions(texte: str) -> str:
+    """Retire d'un texte de conditions ce qui ne doit plus y figurer."""
+    propre = texte or ""
+    for motif in PHRASES_RETIREES:
+        propre = motif.sub("", propre)
+    # Le retrait laisse parfois deux espaces ou un blanc avant le point.
+    propre = re.sub(r"[ \t]{2,}", " ", propre)
+    propre = re.sub(r"\s+([.,;])", r"\1", propre)
+    return propre.strip()
+
+
 def composer(depot, source: Path, bilan: dict) -> None:
     """Rattache à chaque ouvrage ce dont il est fait.
 
@@ -464,7 +492,8 @@ def convertir(source: Path, destination: Path) -> dict:
             adresse_chantier=" ".join(lignes_de(e, D.ADR_CHANTIER, 200)),
             date_devis=date_iso(e, D.DATE) or "",
             statut="accepté" if ident in devis_factures else "envoyé",
-            conditions="\n".join(lignes_de(e, D.CONDITIONS, 200)),
+            conditions=nettoyer_conditions(
+                "\n".join(lignes_de(e, D.CONDITIONS, 200))),
             lignes=lignes,
             ref_externe=f"batappli:devis:{ident}",
             notes_internes=f"Repris de BatAppli (devis {ident}"
@@ -506,7 +535,8 @@ def convertir(source: Path, destination: Path) -> dict:
             adresse_chantier=" ".join(lignes_de(e, F.ADR_CHANTIER, 200)),
             date_facture=date_iso(e, F.DATE) or "",
             statut="payée" if regle else "émise",
-            conditions="\n".join(lignes_de(e, F.CONDITIONS, 200)),
+            conditions=nettoyer_conditions(
+                "\n".join(lignes_de(e, F.CONDITIONS, 200))),
             lignes=lignes,
             mode_paiement=texte(regle[0], R.LIBELLE, 20) if regle else "",
             date_emission=date_iso(e, F.DATE) or "",
