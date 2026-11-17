@@ -1,6 +1,9 @@
 """Logiciel de devis pour maçon — stockage en fichiers, fonctionnement 100 % local."""
 
-__version__ = "0.1.1"
+# Ce qu'affiche une exécution depuis les sources. Pour une version
+# publiée, c'est l'étiquette qui décide : le workflow l'inscrit ici
+# avant de construire.
+__version__ = "0.2.0"
 
 # Dépôt GitHub d'où viennent les mises à jour, au format « compte/nom ».
 # Rempli ici une fois pour toutes, il évite à l'utilisateur d'avoir à le

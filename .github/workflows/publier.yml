@@ -6,6 +6,9 @@
 #
 #     git tag v0.2.0 && git push origin v0.2.0
 #
+# ou, depuis l'interface de GitHub, une release dont on crée l'étiquette au
+# passage. Rien d'autre à préparer : l'étiquette fait la version.
+#
 # L'application installée chez l'utilisateur va ensuite chercher l'archive qui
 # correspond à sa machine, d'après le nom du fichier.
 
@@ -44,7 +47,7 @@ jobs:
             etiquette: Linux
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Qt a besoin de ces bibliothèques même sans écran : PyInstaller importe
       # PySide6 pour l'analyser, et le dessin de l'icône instancie Qt.
@@ -70,19 +73,37 @@ jobs:
           irm https://astral.sh/uv/install.ps1 | iex
           "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      # Une étiquette qui ne correspond pas à __version__ ferait proposer la
-      # mise à jour en boucle : on s'arrête avant de publier quoi que ce soit.
-      - name: Vérifier que l'étiquette correspond à la version
+      # C'est l'étiquette qui fait la version : elle est inscrite dans le code
+      # avant la construction, et l'archive comme le paquet macOS la portent.
+      # Auparavant il fallait penser à modifier __version__ puis à poser une
+      # étiquette identique — et une étiquette posée depuis l'interface de
+      # GitHub n'en laissait aucune chance.
+      - name: Inscrire la version de l'étiquette
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
-          version=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' bata_plouf/__init__.py | head -1)
-          etiquette="${GITHUB_REF_NAME#v}"
-          echo "code : $version · étiquette : $etiquette"
-          if [ "$version" != "$etiquette" ]; then
-            echo "::error::L'étiquette $GITHUB_REF_NAME ne correspond pas à __version__ = $version"
+          version="${GITHUB_REF_NAME#v}"
+          if ! printf '%s' "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::« $GITHUB_REF_NAME » n'est pas un numéro de version : attendu v1.2.3."
             exit 1
           fi
+          # « python » sur les images Windows, « python3 » ailleurs selon les
+          # versions : on prend celui qui répond.
+          interprete=python
+          command -v "$interprete" >/dev/null 2>&1 || interprete=python3
+          "$interprete" - "$version" <<'FIN'
+          import pathlib, re, sys
+
+          version = sys.argv[1]
+          fichier = pathlib.Path("bata_plouf/__init__.py")
+          texte = fichier.read_text(encoding="utf-8")
+          nouveau, combien = re.subn(r'__version__ = "[^"]*"',
+                                     f'__version__ = "{version}"', texte, count=1)
+          if combien != 1:
+              raise SystemExit("__version__ introuvable dans bata_plouf/__init__.py")
+          fichier.write_text(nouveau, encoding="utf-8")
+          print("version inscrite :", version)
+          FIN
 
       - name: Construire l'application
         shell: bash
@@ -104,7 +125,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Récupérer toutes les archives
         uses: actions/download-artifact@v4

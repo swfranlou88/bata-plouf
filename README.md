@@ -317,16 +317,22 @@ Première mise en ligne :
     git push -u origin main
     git tag v0.1.0 && git push origin v0.1.0
 
-Ensuite, à chaque version : augmenter `__version__` dans
-`bata_plouf/__init__.py`, lancer les contrôles, pousser l'étiquette.
-GitHub Actions construit les quatre versions et publie la release.
+Ensuite, à chaque version, **une étiquette suffit** :
 
-**Poussez l'étiquette, ne créez pas la release à la main** : c'est le workflow
-qui s'en charge. S'il en trouve une déjà créée, il y joint les archives plutôt
-que d'échouer, mais le chemin normal est l'étiquette seule.
+    git tag v0.2.0 && git push origin v0.2.0
 
-**Si l'étiquette ne correspond pas à `__version__`, la construction s'arrête.**
-Sans ce garde-fou, l'application reproposerait la même mise à jour sans fin.
+ou, sans ligne de commande, depuis GitHub : *Releases* → *Draft a new release*
+→ *Choose a tag* → taper `v0.2.0` → *Create new tag* → *Publish release*.
+
+C'est l'étiquette qui fait la version : le workflow l'inscrit dans
+`bata_plouf/__init__.py` avant de construire, et l'archive comme le paquet
+macOS la portent. Rien à modifier dans le code au préalable ; `__version__`
+n'est là que pour une exécution depuis les sources. Une étiquette qui n'est
+pas un `v1.2.3` arrête la construction avant qu'elle ne commence.
+
+GitHub Actions construit alors les quatre versions et publie la release. S'il
+en trouve une déjà créée — c'est le cas quand on passe par l'interface — il y
+joint les archives au lieu d'échouer.
 
 Les images macOS de GitHub expirent régulièrement : le workflow vise
 `macos-15` et `macos-15-intel`, à relever quand elles seront retirées. **Les
