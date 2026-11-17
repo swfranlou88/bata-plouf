@@ -233,26 +233,31 @@ class DelegueChoix(QStyledItemDelegate):
 # --- la fiche derrière une ligne ------------------------------------------
 
 
-# Ce que la fiche de bibliothèque dicte à la ligne qui en vient, et sous quel
-# nom le dire à qui s'apprête à reporter.
+# Ce que la fiche de bibliothèque dicte à la ligne qui en vient : le champ
+# de la ligne, et celui de la fiche quand il ne porte pas le même nom.
 REPORTS = [
-    ("designation", None, "nom", str),
-    ("detail", None, "détail imprimé", str),
-    ("unite", None, "unité", str),
-    ("prix_unitaire", "prix_vente", "prix unitaire", euros),
-    ("taux_tva", None, "TVA", taux_tva_txt),
+    ("designation", None),
+    ("detail", None),
+    ("unite", None),
+    ("prix_unitaire", "prix_vente"),
+    ("taux_tva", None),
 ]
 
 
 def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
     """Ouvre la fiche de bibliothèque dont vient une ligne.
 
-    Ce qui y change ne descend pas tout seul sur le document : une ligne de
-    devis est une copie, et le prix d'un devis parti chez le client n'a pas
-    à bouger parce qu'on a réajusté un tarif six mois plus tard. On propose
-    donc le report, en disant ce qu'il changerait.
+    Ce qu'on corrige dans la fiche descend sur la ligne du document ouvert :
+    c'est bien celle-là qu'on avait sous les yeux en double-cliquant.
 
-    Rend vrai si la ligne a été modifiée.
+    Seulement ce qu'on vient de changer, cependant. Une ligne porte souvent
+    un prix négocié pour ce chantier-là ; ouvrir la fiche pour y lire le
+    tarif, puis sortir par OK, ne doit pas écraser ce prix par celui de la
+    bibliothèque. On compare donc la fiche à elle-même, avant et après.
+
+    Sur une facture émise, rien ne descend : le verrou comptable tient.
+
+    Rend vrai si la ligne a changé.
     """
     article = depot.article(ligne.article_id) if ligne.article_id else None
     if article is None:
@@ -265,6 +270,8 @@ def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
             ligne.article_id = ""
             return True
         return False
+
+    avant = {champ: getattr(article, source or champ) for champ, source in REPORTS}
     dialogue = DialogueArticle(parent, depot, article)
     if dialogue.exec() != QDialog.DialogCode.Accepted:
         return False
@@ -272,23 +279,13 @@ def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
     if not reportable:
         return False
 
-    ecarts = []
-    for champ, source, libelle, montrer in REPORTS:
+    change = False
+    for champ, source in REPORTS:
         valeur = getattr(fiche, source or champ)
-        if getattr(ligne, champ) != valeur:
-            ecarts.append((champ, valeur, libelle, montrer))
-    if not ecarts:
-        return False
-    detail = "\n".join(
-        f"· {libelle} : {montrer(getattr(ligne, champ)) or '—'} → {montrer(valeur)}"
-        for champ, valeur, libelle, montrer in ecarts)
-    if not confirmer(parent, "Reporter sur cette ligne",
-                     "La fiche a changé. Reporter aussi sur la ligne de ce "
-                     f"document ?\n\n{detail}"):
-        return False
-    for champ, valeur, _, _ in ecarts:
-        setattr(ligne, champ, valeur)
-    return True
+        if valeur != avant[champ] and getattr(ligne, champ) != valeur:
+            setattr(ligne, champ, valeur)
+            change = True
+    return change
 
 
 # --- choix dans la bibliothèque de prix -----------------------------------
