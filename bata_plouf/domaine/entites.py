@@ -39,7 +39,7 @@ LIBELLES_FACTURE = {
 }
 MODES_PAIEMENT = ["", "Virement", "Chèque", "Espèces", "Carte bancaire", "Prélèvement"]
 STATUTS_CHANTIER = ["prévu", "en cours", "terminé", "annulé"]
-TYPES_ARTICLE = ["matériau", "main d'œuvre", "ouvrage"]
+TYPES_ARTICLE = ["article", "main d'œuvre", "ouvrage"]
 FAMILLES = [
     "Gros œuvre", "Maçonnerie", "Fondations", "Dallage", "Enduits",
     "Couverture", "Démolition", "Terrassement", "Carrelage", "Divers",
@@ -251,7 +251,7 @@ class Composant:
 
 @dataclass
 class Article(Archivable):
-    """Une ligne de la bibliothèque de prix : matériau, main d'œuvre ou ouvrage."""
+    """Une ligne de la bibliothèque de prix : article, main d'œuvre ou ouvrage."""
 
     id: str = field(default_factory=nouvel_id)
     reference: str = ""
@@ -262,7 +262,7 @@ class Article(Archivable):
     # c'est le métier de l'entreprise, pas une information pour le client.
     detail: str = ""
     notes_internes: str = ""
-    type: str = "matériau"
+    type: str = "article"
     fournisseur: str = ""
     famille: str = "Maçonnerie"
     unite: str = "u"
@@ -270,8 +270,8 @@ class Article(Archivable):
     prix_vente: float = 0.0
     taux_tva: float = 10.0
     ref_externe: str = ""
-    # Ce dont un ouvrage est fait : matériaux et heures, par unité d'ouvrage.
-    # Vide pour un matériau, qui ne se compose de rien.
+    # Ce dont un ouvrage est fait : articles et heures, par unité d'ouvrage.
+    # Vide pour un article, qui ne se compose de rien.
     composants: list[Composant] = field(default_factory=list)
     supprime_le: str = ""
     cree_le: str = field(default_factory=maintenant)
@@ -474,6 +474,12 @@ def depuis_dict(classe, donnees: dict):
     filtre = {k: v for k, v in donnees.items() if k in connus}
     if classe in (Devis, Facture) and "lignes" in donnees:
         filtre["lignes"] = [depuis_dict(Ligne, l) for l in donnees.get("lignes") or []]
+    if classe is Article:
+        # « matériau » s'est appelé ainsi jusqu'en novembre 2026 : les fichiers
+        # écrits avant, et les archives qu'on restaure, portent encore ce mot.
+        # On le traduit à la lecture, et la prochaine écriture le fixe.
+        if filtre.get("type") == "matériau":
+            filtre["type"] = "article"
     if classe is Article and "composants" in donnees:
         filtre["composants"] = [depuis_dict(Composant, c)
                                 for c in donnees.get("composants") or []]

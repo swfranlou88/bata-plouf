@@ -405,14 +405,14 @@ def main() -> int:
 
     verifier("et il finit sur le total TTC",
              "RESTE DÛ" not in page and "SOLDE" not in page)
-    # Une ligne à remplir à la main, pas un montant calculé : l'acompte se
-    # négocie au moment de signer, et les conditions l'annoncent déjà.
-    verifier("un devis laisse une ligne pour l'acompte",
-             "Acompte : ___" in page,
+    # Plus de ligne « Acompte : ___ » à remplir à la main : elle a été
+    # retirée en novembre 2026, les conditions disent déjà ce qu'il faut.
+    verifier("aucun devis ne laisse de ligne d'acompte à remplir",
+             "Acompte : ___" not in page,
              "acompte du devis d'essai : " + str(simple.acompte_pct))
     verifier("sans montant calculé",
              "% à la commande :" not in page and "solde de" not in page)
-    verifier("une facture n'en laisse pas",
+    verifier("une facture n'en laisse pas non plus",
              "Acompte : ___" not in facture_classique)
     totale.statut = "payée"
     totale.date_paiement = "2026-03-04"
@@ -476,7 +476,7 @@ def main() -> int:
     verifier("mais la bibliothèque les retrouve",
              relu.id in [a.id for a in depot.articles("2.930")])
 
-    # Le bandeau des écrans Matériaux et Ouvrages, lui, ne cherche que sur
+    # Le bandeau des écrans Articles et Ouvrages, lui, ne cherche que sur
     # le nom et le code : la famille a sa propre liste déroulante, et
     # presque toute la bibliothèque porte la même.
     from bata_plouf.adaptateurs.interface.vues import VueCatalogue
@@ -505,19 +505,19 @@ def main() -> int:
     verifier("rien à surligner quand rien ne correspond",
              amorce("Coffrage", "linteaux") == 0)
 
-    verifier("un ouvrage et un matériau se rangent à part",
-             depot.statistiques()["materiaux"]
+    verifier("un ouvrage et un article se rangent à part",
+             depot.statistiques()["articles"]
              + depot.statistiques()["ouvrages"]
-             == depot.statistiques()["articles"],
+             == depot.statistiques()["bibliotheque"],
              str({c: depot.statistiques()[c]
-                  for c in ("articles", "materiaux", "ouvrages")}))
+                  for c in ("bibliotheque", "articles", "ouvrages")}))
     pose = depot.enregistrer_article(
         Article(designation="Carrelage posé", type="ouvrage", prix_vente=48.0))
     verifier("l'ouvrage grossit le bon compte",
              depot.statistiques()["ouvrages"] >= 1
              and pose.id in [a.id for a in depot.articles(type_="ouvrage")])
-    verifier("et pas celui des matériaux",
-             pose.id not in [a.id for a in depot.articles(type_="matériau")])
+    verifier("et pas celui des articles",
+             pose.id not in [a.id for a in depot.articles(type_="article")])
 
     print("\nRecherche d'un client")
     from bata_plouf.adaptateurs.interface.commun import (
@@ -545,7 +545,7 @@ def main() -> int:
                    prix_vente=60.0, notes_internes="Main d'oeuvre  1.250")
     sans = Article(designation="Démolition d'un mur", type="ouvrage",
                    unite="m²", prix_vente=40.0, notes_internes="2008")
-    sac = Article(designation="Sac de ciment 35 kg", type="matériau",
+    sac = Article(designation="Sac de ciment 35 kg", type="article",
                   unite="sac", prix_vente=9.0)
     verifier("le temps se lit dans la composition",
              heures_unitaires(pose) == 1.25, str(heures_unitaires(pose)))
@@ -577,7 +577,7 @@ def main() -> int:
              len(prevu.postes) == 2)
     verifier("l'accent et la casse ne gênent pas le rapprochement",
              any(abs(p.heures - 5.0) < 0.001 for p in prevu.postes))
-    verifier("les matériaux deviennent des fournitures",
+    verifier("les articles deviennent des fournitures",
              [(f.designation, f.quantite) for f in prevu.fournitures]
              == [("Sac de ciment 35 kg", 12.0)])
     verifier("un ouvrage sans temps est annoncé, pas compté",
@@ -590,9 +590,9 @@ def main() -> int:
 
     # La composition d'un ouvrage : ce qu'il consomme par unité, matière et
     # heures. C'est elle qui bâtit le prix, et la liste de courses du chantier.
-    agglo = Article(designation="Bloc creux 20", type="matériau", unite="u",
+    agglo = Article(designation="Bloc creux 20", type="article", unite="u",
                     prix_achat=0.9, prix_vente=1.5)
-    tuile = Article(designation="Tuile de rive", type="matériau", unite="u",
+    tuile = Article(designation="Tuile de rive", type="article", unite="u",
                     prix_achat=5.7, prix_vente=7.0)
     heure = Article(designation="0 Main d'oeuvre", type="main d'œuvre",
                     unite="h", prix_vente=40.0)

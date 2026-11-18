@@ -67,7 +67,7 @@ def _fournitures(prevu) -> str:
     manquants = sum(1 for f in prevu.fournitures if not f.prix_achat)
     note = ("" if not manquants else
             f"<div style='font-size:8pt; margin-top:3px;'>{manquants} "
-            f"matériau(x) sans prix d'achat en bibliothèque : le total est "
+            f"article(s) sans prix d'achat en bibliothèque : le total est "
             f"donc un minimum.</div>")
 
     return (
@@ -75,7 +75,7 @@ def _fournitures(prevu) -> str:
         f"style='font-size:9pt;'>"
         f"<thead><tr>"
         f"<th align='left' style='border-bottom:{FILET}; padding:3px 4px;'>"
-        f"MATÉRIAU</th>"
+        f"ARTICLE</th>"
         f"<th align='right' width='11%' style='border-bottom:{FILET}; "
         f"padding:3px 4px;'>QTÉ</th>"
         f"<th align='center' width='7%' style='border-bottom:{FILET}; "

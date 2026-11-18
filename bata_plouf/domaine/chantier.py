@@ -97,7 +97,7 @@ class Poste:
 
 @dataclass
 class Fourniture:
-    """Un matériau à prévoir, avec sa quantité, tous postes confondus."""
+    """Un article à prévoir, avec sa quantité, tous postes confondus."""
 
     designation: str
     quantite: float
@@ -226,8 +226,8 @@ def preparation(document, catalogue: Catalogue) -> Preparation:
                 elif not est_main_doeuvre(composant.designation):
                     machines.ajouter(composant.designation, total, "h")
 
-        if article is not None and getattr(article, "type", "") == "matériau":
-            # Un matériau posé en ligne directe sur le devis : du sable livré,
+        if article is not None and getattr(article, "type", "") == "article":
+            # Un article posé en ligne directe sur le devis : du sable livré,
             # un sac de ciment vendu tel quel.
             fournitures.ajouter(designation, quantite, unite,
                                 article.prix_achat or 0.0)

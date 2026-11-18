@@ -135,6 +135,12 @@ sont d'un **bleu-vert sourd** plutôt que du gris des bordures : sur fond
 sombre, ce gris-là se noyait. La teinte se choisit d'après le thème en cours
 et se recalcule si le système bascule pendant que le logiciel tourne.
 
+Un sélecteur **TVA des lignes**, dans l'en-tête du devis et de la facture,
+met toutes les lignes chiffrées au même taux d'un seul geste. Les lignes à
+0 % ne bougent pas : ce n'est pas un taux parmi d'autres mais
+l'autoliquidation, décidée ligne par ligne. Le taux proposé d'emblée est
+celui qui domine déjà le document. Une facture émise ne s'y prête plus.
+
 Le bas de page n'est plus recopié dans le document à sa création : il se
 choisit à l'impression, d'après le type du document et son taux de TVA —
 devis au taux normal, devis au taux réduit, facture. Un brouillon suit donc
@@ -145,7 +151,7 @@ l'emporte toujours.
 
 Tout ce qui supprime porte un **bouton rouge** et demande d'abord : mettre
 une fiche à la corbeille, l'effacer pour de bon, retirer une ligne d'un
-devis ou d'une facture, retirer un matériau de la composition d'un ouvrage,
+devis ou d'une facture, retirer un article de la composition d'un ouvrage,
 retirer le logo. La question nomme ce qui va partir — la ligne, ou la liste
 des lignes quand il y en a plusieurs — plutôt que de les compter. Le rouge
 se recalcule quand le Mac bascule du thème clair au sombre.
@@ -153,11 +159,11 @@ se recalcule quand le Mac bascule du thème clair au sombre.
 Ce qui s'est bien passé se dit par une **annonce** : un message qui paraît
 en bas de la fenêtre, se lit et s'efface au bout de deux secondes et demie,
 sans rien interrompre ni rien demander. Enregistrer un devis, une facture,
-un client, un matériau ou les paramètres n'ouvre donc plus de fenêtre à
+un client, un article ou les paramètres n'ouvre donc plus de fenêtre à
 cliquer. Les fenêtres modales restent pour ce qui mérite qu'on s'arrête :
 un refus, une erreur, une décision à prendre.
 
-L'accueil présente six catégories — clients, devis, matériaux, ouvrages,
+L'accueil présente six catégories — clients, devis, articles, ouvrages,
 factures, chantiers — avec leurs chiffres et des raccourcis. Chaque catégorie
 ouvre une liste avec création, modification et suppression — sauf les
 chantiers, qui se calculent.
@@ -175,20 +181,15 @@ mène du devis à son chantier et du chantier à son devis.
 Un ouvrage porte sa **composition** : ce qu'il consomme par unité, matière et
 heures — « un mètre carré de bouchage en agglos, c'est un bloc creux, un
 demi-sac de ciment, 0,03 m³ de sable et 2,93 heures ». Elle se modifie sur la
-fiche, sous les prix : une quantité se tape dans la colonne, un matériau
+fiche, sous les prix : une quantité se tape dans la colonne, un article
 s'ajoute depuis la bibliothèque, et le total des composants s'affiche à côté
 — de quoi voir d'un coup d'œil si le prix de vente tient encore. Multipliée par les quantités du devis et additionnée
 d'un poste à l'autre, elle donne la liste de courses du chantier ; les heures
 de machine y vont à part, car une heure de tractopelle n'est pas une heure
 d'homme.
 
-Sous les mentions d'un devis, une ligne vide : « Acompte : ______ ». Pas de
-montant calculé — il se négocie au moment de signer, et les conditions
-l'annoncent déjà. C'est au stylo qu'on l'écrit, le jour où le chèque est
-remis.
-
 La liste de courses porte les **prix d'achat** et leur total : ce que la
-matière coûtera chez le fournisseur, pas ce qu'elle se revend. Un matériau
+matière coûtera chez le fournisseur, pas ce qu'elle se revend. Un article
 dont la fiche n'a pas de prix d'achat est signalé, et le total annoncé comme
 un minimum. Le bouton **Imprimer la liste…** en fait une feuille à emporter,
 avec une case à cocher par ligne pour pointer la livraison — document
@@ -200,7 +201,7 @@ va la chercher et la pose sur la bibliothèque existante. Les 1274 ouvrages
 l'ont reçue, 3536 lignes en tout. On peut s'y fier : sur 1189 d'entre eux, la
 somme des composants retombe sur le prix de vente à 2 % près.
 
-**Matériaux** et **ouvrages** sont la même bibliothèque, séparée en deux
+**Articles** et **ouvrages** sont la même bibliothèque, séparée en deux
 écrans : d'un côté ce qui s'achète chez le fournisseur, de l'autre la
 prestation posée au prix de vente. Chercher un sac de ciment et chercher un
 prix de carrelage posé ne sont pas le même geste, et mêler les deux fait
@@ -214,7 +215,7 @@ Un champ posé sur « — aucun — » se vide dès qu'on entre dedans : la ment
 dit qu'on n'a rien choisi, elle n'est pas un texte à effacer à la main.
 
 Les fiches couvrent : pour un **client**, numéro automatique, civilité, nom,
-adresse, deux téléphones, description ; pour un **matériau**, référence
+adresse, deux téléphones, description ; pour un **article**, référence
 fournisseur, fournisseur, nom, détail imprimé, notes internes, unité, prix
 d'achat et de vente, bénéfice et marge calculés ; pour un **devis** ou une **facture**, numéro,
 dates, adresses du client et du chantier, lignes détaillées, TVA par taux, HT
@@ -244,7 +245,7 @@ qui servent à bâtir le prix et ne sortent jamais sur papier.
 
 Le bouton **Bibliothèque…** d'un devis ou d'une facture ouvre sur les
 **ouvrages** : une ligne de devis vend une prestation posée, pas un sac de
-ciment. Les matériaux restent à un clic, pour ce qu'on livre sans le poser.
+ciment. Les articles restent à un clic, pour ce qu'on livre sans le poser.
 
 **Toutes les listes surlignent** ce qui a répondu à la recherche : on voit
 pourquoi chaque ligne est restée. Chacune surligne selon sa propre règle —

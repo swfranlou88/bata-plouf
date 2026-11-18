@@ -2,7 +2,7 @@
 
 La première reprise n'avait gardé des ouvrages que leur prix et leur temps de
 pose, parce que la composition semblait tenir dans une note. Elle est en fait
-dans une table à part, ARTOUV : une ligne par matériau et par heure, avec la
+dans une table à part, ARTOUV : une ligne par article et par heure, avec la
 quantité pour une unité d'ouvrage. Cet outil va la chercher et la pose sur la
 bibliothèque existante, sans toucher au reste.
 

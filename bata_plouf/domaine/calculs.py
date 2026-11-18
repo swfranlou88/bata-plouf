@@ -104,6 +104,35 @@ def taux_reduit(document) -> bool:
                if getattr(l, "chiffree", False))
 
 
+def taux_dominant(document, defaut: float) -> float:
+    """Le taux le plus répandu dans le document, hors 0 %.
+
+    C'est celui que le sélecteur propose d'emblée : presque toujours celui
+    qu'on veut étendre au reste, et jamais une valeur prise au hasard.
+    """
+    taux = [l.taux_tva for l in getattr(document, "lignes", []) or []
+            if getattr(l, "chiffree", False) and l.taux_tva]
+    return max(set(taux), key=taux.count) if taux else defaut
+
+
+def appliquer_taux(document, taux: float) -> int:
+    """Met toutes les lignes chiffrées au même taux ; renvoie le nombre changé.
+
+    Les lignes à 0 % ne bougent pas : ce n'est pas un taux parmi d'autres mais
+    l'autoliquidation, décidée pour la ligne et pour elle seule. Les sections
+    et les textes libres n'ont pas de TVA du tout.
+    """
+    changees = 0
+    for ligne in getattr(document, "lignes", []) or []:
+        if not getattr(ligne, "chiffree", False):
+            continue
+        if ligne.taux_tva == 0.0 or ligne.taux_tva == taux:
+            continue
+        ligne.taux_tva = taux
+        changees += 1
+    return changees
+
+
 # --- quel texte au bas d'un document --------------------------------------
 
 def conditions_par_defaut(societe, est_facture: bool,

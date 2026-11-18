@@ -28,7 +28,7 @@ class ModeleComposants(QAbstractTableModel):
     """La composition d'un ouvrage, quantités modifiables.
 
     Seule la quantité se tape : le nom et l'unité viennent de la fiche du
-    matériau, et les retoucher ici ferait diverger deux écritures du même
+    article, et les retoucher ici ferait diverger deux écritures du même
     article.
     """
 
@@ -515,7 +515,7 @@ class DialogueArticle(DialogueBase):
 
         C'est la table qui bâtit le prix de vente et qui fait, sur un
         chantier, la liste de ce qu'il faut emmener. Elle se modifie ici :
-        une quantité se tape dans la colonne, un matériau s'ajoute depuis la
+        une quantité se tape dans la colonne, un article s'ajoute depuis la
         bibliothèque.
         """
         cadre = QWidget()
@@ -563,7 +563,7 @@ class DialogueArticle(DialogueBase):
         # chemin inverse ferait un cercle.
         from .devis import DialogueChoixArticle
 
-        dialogue = DialogueChoixArticle(self, self.depot, "Matériaux")
+        dialogue = DialogueChoixArticle(self, self.depot, "Articles")
         if dialogue.exec() != QDialog.DialogCode.Accepted:
             return
         for article in dialogue.articles():
@@ -585,7 +585,7 @@ class DialogueArticle(DialogueBase):
                 else "\n\n" + "\n".join(f"• {n}" for n in noms[:6]))
         if not confirmer(self, "Retirer de la composition",
                          f"Retirer {quoi} de la composition de cet ouvrage ?"
-                         "\n\nLe matériau reste au catalogue ; seul son emploi "
+                         "\n\nL'article reste au catalogue ; seul son emploi "
                          "dans cet ouvrage disparaît."):
             return
         self.composants.retirer(rangs)
@@ -606,7 +606,7 @@ class DialogueArticle(DialogueBase):
         # Court : la fiche n'est pas large, et ce résumé se lit d'un coup
         # d'œil pour comparer au prix de vente saisi juste au-dessus.
         self.resume_composition.setText(
-            f"{nombre(heures, 3)} h · {matiere} matériaux · "
+            f"{nombre(heures, 3)} h · {matiere} articles · "
             f"{euros(total)} / {unite}")
 
     def _suivre_achat(self, achat: float) -> None:

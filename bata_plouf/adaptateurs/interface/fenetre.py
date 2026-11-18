@@ -24,7 +24,7 @@ RUBRIQUES = [
     ("Accueil", "accueil"),
     ("Clients", "clients"),
     ("Devis", "devis"),
-    ("Matériaux", "catalogue"),
+    ("Articles", "catalogue"),
     ("Ouvrages", "ouvrages"),
     ("Factures", "factures"),
     ("Chantiers", "chantiers"),

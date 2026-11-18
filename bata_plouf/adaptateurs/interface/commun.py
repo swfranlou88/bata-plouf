@@ -74,7 +74,7 @@ class ModeleListe(QAbstractTableModel):
         self.colonnes = colonnes
         self.elements: list = list(elements or [])
         # L'ordre dans lequel le dépôt a fourni les éléments. Il n'est pas
-        # arbitraire — devis du plus récent, matériaux par famille — donc on
+        # arbitraire — devis du plus récent, articles par famille — donc on
         # le garde pour pouvoir y revenir, et pour que le tri s'applique
         # toujours dessus : à valeurs égales, cet ordre-là tranche.
         self._naturel: list = list(self.elements)
@@ -153,7 +153,7 @@ def activer_le_tri(tableau, modele):
 
     Trois états se succèdent sur une même colonne : croissant, décroissant,
     puis l'ordre d'origine. Le troisième compte, car cet ordre n'est pas
-    quelconque — les devis arrivent du plus récent, les matériaux par
+    quelconque — les devis arrivent du plus récent, les articles par
     famille — et sans lui on ne pourrait plus y revenir sans changer d'écran.
 
     On ne passe pas par setSortingEnabled de Qt, qui trierait d'office sur la
@@ -538,10 +538,15 @@ def etiquette_client(client) -> str:
     return f"{client.libelle} — {ville}" if ville else client.libelle
 
 
-def liste_deroulante(valeurs, selection="") -> QComboBox:
+def liste_deroulante(valeurs, selection="", formateur=str) -> QComboBox:
+    """Les valeurs restent en donnée, « formateur » décide de l'affichage.
+
+    Un taux de TVA se lit « 20 % » et se calcule en 20.0 : séparer les deux
+    évite de reconvertir du texte au moment de s'en servir.
+    """
     boite = QComboBox()
     for valeur in valeurs:
-        boite.addItem(str(valeur), valeur)
+        boite.addItem(formateur(valeur), valeur)
     if selection is not None:
         index = boite.findData(selection)
         if index < 0:

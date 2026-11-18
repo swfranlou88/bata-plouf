@@ -230,7 +230,7 @@ def convertir(source: Path, destination: Path) -> dict:
             vus.add(cle)
             depot.enregistrer_article(Article(
                 designation=a["designation"], unite=a["unite"],
-                famille=a["famille"], type="matériau"))
+                famille=a["famille"], type="article"))
             bilan["articles"] += 1
 
     for chemin in sorted(source.glob("*.xls")):

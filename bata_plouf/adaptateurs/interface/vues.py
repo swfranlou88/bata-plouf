@@ -1,4 +1,4 @@
-"""Écrans de liste : clients, chantiers, matériaux.
+"""Écrans de liste : clients, chantiers, articles.
 
 Toutes les listes partagent le même socle : une recherche, des filtres propres
 à la catégorie, un tableau, et un jeu de boutons qui bascule selon qu'on
@@ -264,15 +264,15 @@ class VueClients(VueListe):
 class VueCatalogue(VueListe):
     """Les fournitures : ce qui s'achète chez le fournisseur et se revend."""
 
-    nom = "Matériaux"
+    nom = "Articles"
     mot_element = "article"
     libelle_nouveau = "Nouvel article"
     indication_recherche = "Nom ou référence fournisseur…"
     # Ce que cette liste montre. Ici tout sauf les ouvrages, pour qu'une
     # fiche d'un type inattendu reste visible quelque part plutôt que de
     # disparaître des deux écrans.
-    type_cree = "matériau"
-    types_filtrables = ["matériau", "main d'œuvre"]
+    type_cree = "article"
+    types_filtrables = ["article", "main d'œuvre"]
     # Ce sur quoi porte le champ de recherche, et rien d'autre. La famille
     # en est exclue : elle a sa propre liste déroulante juste à côté, et
     # presque toute la bibliothèque porte « Maçonnerie » — taper les trois
@@ -410,7 +410,7 @@ class VueCatalogue(VueListe):
 class VueOuvrages(VueCatalogue):
     """Les ouvrages : une prestation posée, prix de vente tout compris.
 
-    Même bibliothèque que les matériaux, même fiche, mais deux écrans :
+    Même bibliothèque que les articles, même fiche, mais deux écrans :
     chercher un sac de ciment et chercher un prix de carrelage posé ne sont
     pas le même geste, et mêler les deux fait mille cinq cents lignes.
     """

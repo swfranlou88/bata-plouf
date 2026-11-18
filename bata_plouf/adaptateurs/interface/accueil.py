@@ -13,7 +13,7 @@ from .commun import barre, bouton, discret
 RUBRIQUES_ACCUEIL = [
     ("clients", "Clients", "Particuliers et professionnels"),
     ("devis", "Devis", "Chiffrage et propositions"),
-    ("catalogue", "Matériaux", "Fournitures et prix d'achat"),
+    ("catalogue", "Articles", "Fournitures et prix d'achat"),
     ("ouvrages", "Ouvrages", "Ouvrages posés, prix de vente"),
     ("factures", "Factures", "Acomptes, situations, soldes"),
     ("chantiers", "Chantiers", "Heures et fournitures à prévoir"),
@@ -245,7 +245,7 @@ class VueAccueil(QWidget):
             stats["devis"],
             f"{devis_attente} en attente de réponse" if devis_attente
             else "Chiffrage et propositions")
-        self.cartes["catalogue"].definir(stats["materiaux"])
+        self.cartes["catalogue"].definir(stats["articles"])
         self.cartes["ouvrages"].definir(stats["ouvrages"])
         self.cartes["factures"].definir(
             stats["factures"],

@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 
 from ...domaine.calculs import (
-    conditions_par_defaut, mentions_par_defaut, taux_reduit,
+    appliquer_taux, conditions_par_defaut, mentions_par_defaut,
+    taux_dominant, taux_reduit,
 )
 from ...domaine.facturation import (
     avancement_facture, etat_avancement, generer_acompte, generer_avoir,
@@ -292,6 +293,14 @@ class EditeurFacture(QWidget):
             widget.valueChanged.connect(self._recalculer)
         self.date.dateChanged.connect(self._recalculer)
 
+        # Comme pour le devis : on passe toutes les lignes au même taux
+        # d'un geste, au lieu de les reprendre une par une.
+        self.tva_lignes = liste_deroulante(
+            [x for x in TAUX_TVA if x],
+            taux_dominant(facture, depot.societe.taux_tva_defaut),
+            formateur=taux_tva_txt)
+        self.bouton_tva = bouton("Appliquer", self.appliquer_tva)
+
         self.modele = ModeleLignes(facture)
         for signal in (self.modele.dataChanged, self.modele.rowsInserted,
                        self.modele.rowsRemoved):
@@ -362,6 +371,7 @@ class EditeurFacture(QWidget):
         droite.addRow("Date", self.date)
         droite.addRow("Paiement sous", self.echeance)
         droite.addRow("Statut", self.statut)
+        droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
         droite.addRow("Mode de règlement", self.mode_paiement)
         droite.addRow("Payée le", self.date_paiement)
 
@@ -523,7 +533,8 @@ class EditeurFacture(QWidget):
         # la facture émise, et la corriger après coup la ferait mentir.
         for widget in (self.client, self.adresse_chantier,
                        self.copier_adresse, self.objet, self.date,
-                       self.echeance, self.notes):
+                       self.echeance, self.notes,
+                       self.tva_lignes, self.bouton_tva):
             widget.setEnabled(modifiable)
         self.tableau.setEditTriggers(
             QAbstractItemView.EditTrigger.DoubleClicked
@@ -581,6 +592,22 @@ class EditeurFacture(QWidget):
                 unite=article.unite, prix_unitaire=article.prix_vente,
                 taux_tva=article.taux_tva, article_id=article.id,
                 quantite=1.0), rang) + 1
+
+    def appliquer_tva(self) -> None:
+        """Met toutes les lignes chiffrées au taux choisi, sauf celles à 0 %."""
+        if not self.facture.modifiable:
+            return
+        taux = float(self.tva_lignes.currentData())
+        changees = appliquer_taux(self.facture, taux)
+        if not changees:
+            annoncer(self, "Rien à changer : les lignes chiffrées sont déjà à "
+                     f"{taux_tva_txt(taux)}")
+            return
+        haut = self.modele.index(0, 0)
+        bas = self.modele.index(self.modele.rowCount() - 1, COL_TOTAL)
+        self.modele.dataChanged.emit(haut, bas)
+        self._recalculer()
+        annoncer(self, f"{changees} ligne(s) passée(s) à {taux_tva_txt(taux)}")
 
     def supprimer_ligne(self) -> None:
         if not self.facture.modifiable:

@@ -255,7 +255,7 @@ class FicheChantier(QWidget):
         # Du plus gros au plus petit : on charge le camion dans cet ordre.
         fournitures = sorted(prevu.fournitures, key=lambda f: -f.quantite)
         modele = ModeleListe([
-            Colonne("Matériau", lambda f: f.designation),
+            Colonne("Article", lambda f: f.designation),
             Colonne("Quantité", lambda f: nombre(f.quantite, 2), largeur=85,
                     alignement=DROITE, gras=True, cle=lambda f: f.quantite),
             Colonne("Un.", lambda f: f.unite, largeur=50, alignement=CENTRE),
@@ -277,7 +277,7 @@ class FicheChantier(QWidget):
         if manquants:
             # Un total qui ignore des lignes sans le dire est un total faux.
             dedans.addWidget(discret(
-                f"{manquants} matériau(x) sans prix d'achat : le total est un "
+                f"{manquants} article(s) sans prix d'achat : le total est un "
                 "minimum."))
         dedans.addWidget(discret(
             "Quantités cumulées sur tous les postes, d'après la composition "

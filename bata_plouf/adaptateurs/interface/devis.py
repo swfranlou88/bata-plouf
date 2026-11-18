@@ -17,6 +17,7 @@ from ...domaine import (
     nouvel_id, sous_totaux_sections, taux_tva_txt,
 )
 from ..impression import RenduDocument
+from ...domaine.calculs import appliquer_taux, taux_dominant
 from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, DelegueAmorce, ModeleListe,
     activer_le_tri, alerter, amorce, barre, bouton, bouton_copier_adresse,
@@ -320,8 +321,8 @@ def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
 # Ce qu'une ligne de devis vend. Les ouvrages d'abord : sur les 1316 lignes
 # chiffrées reprises de l'ancien logiciel qu'on retrouve en bibliothèque,
 # 1234 sont des ouvrages — une prestation posée, au prix de vente. Les
-# matériaux restent à portée, pour le sable et le ciment qu'on livre.
-FAMILLES_BIBLIOTHEQUE = ["Ouvrages", "Matériaux", "Tout"]
+# articles restent à portée, pour le sable et le ciment qu'on livre.
+FAMILLES_BIBLIOTHEQUE = ["Ouvrages", "Articles", "Tout"]
 
 
 class DialogueChoixArticle(QDialog):
@@ -332,7 +333,7 @@ class DialogueChoixArticle(QDialog):
         self.resize(760, 460)
 
         # Sur quoi la bibliothèque s'ouvre : les ouvrages pour un devis, les
-        # matériaux pour composer un ouvrage.
+        # articles pour composer un ouvrage.
         self.genre = liste_deroulante(FAMILLES_BIBLIOTHEQUE,
                                       genre if genre in FAMILLES_BIBLIOTHEQUE
                                       else FAMILLES_BIBLIOTHEQUE[0])
@@ -455,6 +456,14 @@ class EditeurDevis(QWidget):
         self.validite.valueChanged.connect(self._recalculer)
         self.date.dateChanged.connect(self._recalculer)
 
+        # Un devis part rarement à deux taux : on en change souvent toutes
+        # les lignes d'un coup, à la main jusqu'ici, ligne après ligne.
+        self.tva_lignes = liste_deroulante(
+            [t for t in TAUX_TVA if t],
+            taux_dominant(devis, depot.societe.taux_tva_defaut),
+            formateur=taux_tva_txt)
+        self.bouton_tva = bouton("Appliquer", self.appliquer_tva)
+
         self.modele = ModeleLignes(devis)
         self.modele.dataChanged.connect(lambda *_: self._recalculer())
         self.modele.rowsInserted.connect(lambda *_: self._recalculer())
@@ -522,6 +531,7 @@ class EditeurDevis(QWidget):
         droite.addRow("Statut", self.statut)
         droite.addRow("Remise globale", self.remise)
         droite.addRow("Acompte", self.acompte)
+        droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
 
         cadre = QWidget()
         colonnes = QHBoxLayout(cadre)
@@ -642,6 +652,20 @@ class EditeurDevis(QWidget):
             )
             position = self.modele.inserer(ligne, position)
             position += 1
+
+    def appliquer_tva(self) -> None:
+        """Met toutes les lignes chiffrées au taux choisi, sauf celles à 0 %."""
+        taux = float(self.tva_lignes.currentData())
+        changees = appliquer_taux(self.devis, taux)
+        if not changees:
+            annoncer(self, "Rien à changer : les lignes chiffrées sont déjà à "
+                     f"{taux_tva_txt(taux)}")
+            return
+        haut = self.modele.index(0, 0)
+        bas = self.modele.index(self.modele.rowCount() - 1, COL_TOTAL)
+        self.modele.dataChanged.emit(haut, bas)
+        self._recalculer()
+        annoncer(self, f"{changees} ligne(s) passée(s) à {taux_tva_txt(taux)}")
 
     def supprimer_ligne(self) -> None:
         rangs = [i.row() for i in self.tableau.selectionModel().selectedRows()]

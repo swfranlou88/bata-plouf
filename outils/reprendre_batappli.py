@@ -159,7 +159,7 @@ class O:  # OUV, 872 octets
 
 class AO:  # ARTOUV, 31 octets — ce dont un ouvrage est fait
     # Trois cent mille lignes de devis n'auraient pas suffi à deviner ces
-    # quantités : elles sont ici, une ligne par matériau et par heure.
+    # quantités : elles sont ici, une ligne par article et par heure.
     QUANTITE, ORDRE, PRIX, OUVRAGE, ARTICLE = 5, 9, 13, 23, 27
 
 
@@ -404,12 +404,12 @@ def convertir(source: Path, destination: Path) -> dict:
         depot.enregistrer_article(Article(
             reference=texte(e, A.REFERENCE, 20) or texte(e, A.CODE, 20),
             designation=libelles[0], detail="\n".join(libelles[1:]),
-            type="matériau", unite=unite(texte(e, A.UNITE, 3)),
+            type="article", unite=unite(texte(e, A.UNITE, 3)),
             prix_achat=monetaire(e, A.PRIX_ACHAT),
             prix_vente=monetaire(e, A.PRIX_VENTE),
             taux_tva=reel(e, A.TVA) or 10.0,
             ref_externe=f"batappli:art:{entier(e, 1)}"))
-        bilan["materiaux"] += 1
+        bilan["articles"] += 1
 
     for e in lire(source / "OUV.FIC"):
         libelles = lignes_de(e, O.DESIGNATION, 500)
@@ -579,7 +579,7 @@ def main() -> None:
     print(f"\nReprise écrite dans {destination}\n")
     print(f"  {b['clients']:5d} clients")
     print(f"  {b['chantiers']:5d} chantiers, déduits des adresses de travaux")
-    print(f"  {b['materiaux']:5d} matériaux et {b['ouvrages']:5d} ouvrages, avec leurs prix")
+    print(f"  {b['articles']:5d} articles et {b['ouvrages']:5d} ouvrages, avec leurs prix")
     print(f"  {b['devis']:5d} devis   {b['postes']:6d} postes   "
           f"{b['devis_ht']:12,.2f} € HT".replace(",", " "))
     print(f"  {b['factures']:5d} factures {b['postes_factures']:5d} postes   "

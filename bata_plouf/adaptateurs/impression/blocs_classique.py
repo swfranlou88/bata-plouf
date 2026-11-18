@@ -352,12 +352,6 @@ def _mentions(ctx: Contexte) -> str:
     if any(l.taux == 0.0 for l in ctx.totaux.tva):
         morceaux.append("Autoliquidation de la TVA : TVA due par le preneur, "
                         "article 283-2 nonies du CGI.")
-    if (not ctx.est_facture and g.afficher_acompte
-            and getattr(d, "acompte_pct", 0)):
-        # Les conditions annoncent déjà l'acompte : ne reste qu'une ligne à
-        # remplir à la main, le jour où le chèque est remis. Pas de montant
-        # calculé ici — il se négocie au moment de signer.
-        morceaux.append("Acompte : " + "_" * 22)
     if ctx.est_facture and getattr(d, "statut", "") == "payée":
         # Le cadre des totaux ne porte plus de « reste dû » : c'est ici que
         # se lit qu'il n'y a plus rien à payer.

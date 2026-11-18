@@ -299,7 +299,7 @@ class VueParametres(QWidget):
                 f"L'archive{venue} contient :\n{inventaire.resume()}"
                 f"{avec_logo}\n\n"
                 "Elle remplacera la totalité de vos clients, chantiers, "
-                "matériaux, devis et factures.\n\n"
+                "articles, devis et factures.\n\n"
                 "Une sauvegarde de l'état actuel est faite juste avant, et "
                 "reste récupérable depuis le dossier de données. Continuer ?"):
             return
