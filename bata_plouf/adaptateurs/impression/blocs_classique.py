@@ -411,7 +411,7 @@ def bas_de_page(ctx: Contexte) -> str:
 
     chantier = _adresse_chantier(ctx) if g.afficher_bloc_chantier else ""
     if chantier:
-        chantier = ("<span style='text-decoration:underline;'>"
+        chantier = ("<span style='font-weight:bold;'>"
                     "Adresse de chantier :</span><br>" + chantier)
 
     return (

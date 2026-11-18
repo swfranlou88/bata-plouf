@@ -141,12 +141,12 @@ met toutes les lignes chiffrées au même taux d'un seul geste. Les lignes à
 l'autoliquidation, décidée ligne par ligne. Le taux proposé d'emblée est
 celui qui domine déjà le document. Une facture émise ne s'y prête plus.
 
-Une facture ne porte **aucune date d'échéance** : ni champ à remplir, ni
-ligne sur le papier, ni colonne dans la liste. Le délai de paiement se
+Une facture ne porte **aucune date d'échéance**, et le logiciel n'en calcule
+plus nulle part : ni champ à remplir, ni ligne sur le papier, ni colonne
+dans la liste, ni retard compté sur l'accueil. Le délai de paiement se
 convient de vive voix, et les conditions de règlement le disent si besoin.
-Une facture émise depuis plus longtemps que le délai des Paramètres reste
-comptée « en retard » sur l'accueil et dans la liste — c'est ce qui reste à
-encaisser, pas une date annoncée au client.
+Ce qui est émis et non réglé se lit dans **restant à encaisser**, sans date
+limite ni rappel à l'ordre.
 
 Les **mentions** se lisent en dernière ligne du tableau, en italique sous ce
 qui vient d'être chiffré, et non plus dans le pavé du bas : c'est là qu'on

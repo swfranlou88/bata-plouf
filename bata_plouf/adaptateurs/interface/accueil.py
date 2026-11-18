@@ -119,7 +119,6 @@ class VueAccueil(QWidget):
         self.chiffre_attente = Chiffre("en attente de réponse")
         self.chiffre_facture = Chiffre("facturé cette année")
         self.chiffre_impaye = Chiffre("restant à encaisser")
-        self.chiffre_retard = Chiffre("en retard de paiement")
 
         self.bandeau_maj = QWidget()
         self.libelle_maj = QLabel()
@@ -161,7 +160,7 @@ class VueAccueil(QWidget):
         ligne_chiffres = QHBoxLayout(bandeau)
         ligne_chiffres.setContentsMargins(18, 12, 18, 12)
         for chiffre in (self.chiffre_attente, self.chiffre_facture,
-                        self.chiffre_impaye, self.chiffre_retard):
+                        self.chiffre_impaye):
             ligne_chiffres.addWidget(chiffre)
         ligne_chiffres.addStretch(1)
 
@@ -231,7 +230,6 @@ class VueAccueil(QWidget):
         self.chiffre_attente.definir(euros(stats["ht_en_attente"]) + " HT")
         self.chiffre_facture.definir(euros(stats["ht_facture"]) + " HT")
         self.chiffre_impaye.definir(euros(stats["ttc_impaye"]) + " TTC")
-        self.chiffre_retard.definir(euros(stats["ttc_en_retard"]) + " TTC")
 
         devis_attente = len(self.depot.devis(statut="envoyé"))
         # Un chantier, c'est un devis vu du côté de l'atelier : ceux qui

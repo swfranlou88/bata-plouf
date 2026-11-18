@@ -207,6 +207,6 @@ class RenduDocument:
     def nom_fichier(self) -> str:
         client = self.depot.nom_client(self.document.client_id)
         bout = "".join(c for c in client if c.isalnum() or c in " -_").strip().replace(" ", "-")
-        defaut = "facture" if hasattr(self.document, "date_echeance") else "devis"
+        defaut = "facture" if hasattr(self.document, "date_facture") else "devis"
         numero = self.document.numero or defaut
         return f"{numero}{('-' + bout) if bout else ''}.pdf"

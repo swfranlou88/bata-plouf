@@ -398,7 +398,6 @@ class VueParametres(QWidget):
             mentions_devis=self.mentions.toPlainText().strip(),
             conditions_facture=self.conditions_f.toPlainText().strip(),
             mentions_facture=self.mentions_f.toPlainText().strip(),
-            delai_paiement_jours=self.depot.societe.delai_paiement_jours,
             depot_mises_a_jour=self.depot_maj.text().strip(),
             mises_a_jour=self.mode_maj.currentData() or "auto",
             journal_ventes=self.journal_ventes.text().strip() or "VE",

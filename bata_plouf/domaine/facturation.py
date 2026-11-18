@@ -207,7 +207,6 @@ def _nouvelle_facture(depot, devis: Devis, type_: str) -> Facture:
         chantier_id=devis.chantier_id,
         objet=devis.objet,
         adresse_chantier=devis.adresse_chantier,
-        echeance_jours=societe.delai_paiement_jours,
     )
 
 
@@ -374,7 +373,6 @@ def generer_avoir(depot, source: Facture) -> Facture:
         client_id=source.client_id,
         chantier_id=source.chantier_id,
         objet=f"Annulation de la facture {source.numero}",
-        echeance_jours=0,
         remise_globale_pct=source.remise_globale_pct,
         facture_source_id=source.id,
     )
@@ -400,7 +398,6 @@ def generer_facture_directe(depot, client_id: str = "") -> Facture:
     return Facture(
         type="directe",
         client_id=client_id,
-        echeance_jours=societe.delai_paiement_jours,
     )
 
 

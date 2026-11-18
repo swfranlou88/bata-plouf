@@ -102,7 +102,6 @@ class Societe:
     # Six mois : un devis de maçonnerie se décide rarement en un trimestre,
     # et son prix tient le temps d'une saison de chantiers.
     validite_jours: int = 180
-    delai_paiement_jours: int = 30
     taux_tva_defaut: float = 10.0
     acompte_defaut_pct: float = 30.0
     # Le bas de page d'un devis au taux normal.
@@ -401,7 +400,6 @@ class Facture(Archivable):
     # a la priorité.
     adresse_chantier: str = ""
     date_facture: str = field(default_factory=lambda: date.today().isoformat())
-    echeance_jours: int = 30
     statut: str = "brouillon"
     lignes: list[Ligne] = field(default_factory=list)
     remise_globale_pct: float = 0.0
@@ -428,15 +426,6 @@ class Facture(Archivable):
         return self.date_facture
 
     @property
-    def date_echeance(self) -> str:
-        try:
-            d = date.fromisoformat(self.date_facture)
-        except ValueError:
-            return ""
-        from datetime import timedelta
-        return (d + timedelta(days=self.echeance_jours or 0)).isoformat()
-
-    @property
     def modifiable(self) -> bool:
         return self.statut == "brouillon"
 
@@ -445,12 +434,6 @@ class Facture(Archivable):
         if self.type == "situation" and self.numero_situation:
             return f"Situation de travaux n° {self.numero_situation}"
         return LIBELLES_FACTURE.get(self.type, "Facture")
-
-    @property
-    def en_retard(self) -> bool:
-        if self.statut != "émise" or not self.date_echeance:
-            return False
-        return date.fromisoformat(self.date_echeance) < date.today()
 
     def totaux(self) -> "Totaux":
         return calculer_totaux(self)

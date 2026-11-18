@@ -535,8 +535,7 @@ class EditeurFacture(QWidget):
             QAbstractItemView.EditTrigger.DoubleClicked
             | QAbstractItemView.EditTrigger.EditKeyPressed
             if modifiable else QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.statut.setText(self.facture.statut
-                            + (" — en retard" if self.facture.en_retard else ""))
+        self.statut.setText(self.facture.statut)
         self.groupe_marche.setVisible(bool(self.facture.devis_id))
         self._eclairer_reglement()
 
@@ -818,7 +817,7 @@ class VueFactures(VueListe):
 
     def __init__(self, depot, parent=None):
         self.statut = liste_deroulante(
-            ["Tous les statuts"] + STATUTS_FACTURE + ["en retard"])
+            ["Tous les statuts"] + STATUTS_FACTURE)
         super().__init__(depot, parent)
         self.statut.currentIndexChanged.connect(self.rafraichir)
 
@@ -847,8 +846,7 @@ class VueFactures(VueListe):
                     alignement=DROITE, cle=lambda f: f.totaux().total_ht),
             Colonne("TTC", lambda f: euros(f.totaux().total_ttc), largeur=110,
                     alignement=DROITE, cle=lambda f: f.totaux().total_ttc),
-            Colonne("Statut", lambda f: ("en retard" if f.en_retard else f.statut),
-                    largeur=90, alignement=CENTRE),
+            Colonne("Statut", lambda f: f.statut, largeur=90, alignement=CENTRE),
         ]
 
     def charger(self):

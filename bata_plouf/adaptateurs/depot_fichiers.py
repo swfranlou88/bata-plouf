@@ -589,9 +589,7 @@ class DepotFichiers:
                  devis_id: str = "", supprimes: bool = False) -> list[Facture]:
         valeurs = sorted((f for f in self._factures.values() if f.supprime == supprimes),
                          key=lambda f: (f.date_facture, f.numero), reverse=True)
-        if statut == "en retard":
-            valeurs = [f for f in valeurs if f.en_retard]
-        elif statut:
+        if statut:
             valeurs = [f for f in valeurs if f.statut == statut]
         if client_id:
             valeurs = [f for f in valeurs if f.client_id == client_id]
@@ -745,12 +743,10 @@ class DepotFichiers:
         facture_ht = sum((calculer_totaux(f).total_ht for f in self.factures()
                           if f.statut in ("émise", "payée")
                           and f.date_facture.startswith(annee)), start=zero)
-        # « Restant à encaisser » et « en retard », eux, ne se bornent pas à
-        # l'année : une facture impayée de l'an dernier reste à encaisser.
+        # « Restant à encaisser » ne se borne pas à l'année : une facture
+        # impayée de l'an dernier reste à encaisser.
         impaye_ttc = sum((calculer_totaux(f).total_ttc for f in self.factures()
                           if f.statut == "émise"), start=zero)
-        en_retard = sum((calculer_totaux(f).total_ttc for f in self.factures()
-                         if f.en_retard), start=zero)
         # Articles et ouvrages ont leur écran chacun : un sac de ciment se
         # commande, une heure de pose se vend. On les compte donc à part.
         articles = self.articles()
@@ -764,7 +760,6 @@ class DepotFichiers:
             "devis": len(self.devis()),
             "factures": len(self.factures()),
             "corbeille": self.taille_corbeille(),
-            "ttc_en_retard": en_retard,
             "ht_accepte": accepte,
             "ht_en_attente": en_attente,
             "ht_facture": facture_ht,
