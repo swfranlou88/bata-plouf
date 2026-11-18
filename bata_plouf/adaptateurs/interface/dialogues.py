@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 
 from ...domaine import (
     Article, Chantier, Client, Composant, STATUTS_CHANTIER,
-    TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre,
+    TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre, taux_tva_txt,
 )
 from ...domaine.chantier import est_du_temps
 from .commun import (
@@ -120,6 +120,11 @@ class DialogueBase(QDialog):
         self.setMinimumWidth(520)
         self.formulaire = QFormLayout()
         self.formulaire.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        # Sans cela, macOS laisse les champs à leur largeur naturelle : une
+        # désignation d'ouvrage de quatre-vingts signes se tapait dans une
+        # case de deux centimètres, au milieu d'une fenêtre à moitié vide.
+        self.formulaire.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.boutons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
@@ -417,7 +422,10 @@ class DialogueArticle(DialogueBase):
                            self.prix_achat, self.prix_vente)
         self.marge = QLabel()
         self.ajouter("Bénéfice", self.marge)
-        self.tva = self.ajouter("TVA", liste_deroulante(TAUX_TVA, a.taux_tva))
+        # « 10 % », pas « 10.0 » : le taux se lit comme il s'écrit sur
+        # le devis.
+        self.tva = self.ajouter("TVA", liste_deroulante(
+            TAUX_TVA, a.taux_tva, formateur=taux_tva_txt))
         self.notes = QPlainTextEdit(a.notes_internes)
         self.notes.setMaximumHeight(70)
         self.notes.setPlaceholderText(

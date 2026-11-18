@@ -164,6 +164,16 @@ ce qui est parti chez le client doit se réimprimer à l'identique, même si
 les textes changent ensuite. Un texte écrit à la main dans le document
 l'emporte toujours.
 
+Il n'y a plus de **remise**, ni par ligne ni sur l'ensemble : zéro sur les
+378 pièces reprises, une colonne et un champ pour rien. Les documents qui en
+porteraient une l'impriment toujours et la déduisent toujours ; seul le
+moyen d'en saisir une nouvelle disparaît.
+
+Les **champs de texte prennent la largeur offerte**, dans les fiches comme
+dans l'en-tête d'un devis ou d'une facture : un nom de client ou un objet de
+chantier ne se tape plus dans une case de deux centimètres au milieu d'une
+fenêtre à moitié vide.
+
 Une ligne ajoutée **vient sous les yeux** : le tableau descend jusqu'à elle
 et la sélectionne, qu'elle arrive seule ou par paquet depuis la
 bibliothèque. Sur un devis de trente postes, ce qu'on insérait tombait sous

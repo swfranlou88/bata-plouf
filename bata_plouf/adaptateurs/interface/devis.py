@@ -34,7 +34,7 @@ from .commun import (
 from .dialogues import DialogueArticle
 from .vues import VueListe
 
-COL_DESIGNATION, COL_QUANTITE, COL_UNITE, COL_PU, COL_TVA, COL_REMISE, COL_TOTAL = range(7)
+COL_DESIGNATION, COL_QUANTITE, COL_UNITE, COL_PU, COL_TVA, COL_TOTAL = range(6)
 
 
 # --- tableau des lignes ---------------------------------------------------
@@ -117,7 +117,7 @@ def question_lignes(modele, rangs, mot: str) -> str:
 class ModeleLignes(QAbstractTableModel):
     """Les lignes d'un devis ou d'une facture, éditables dans le tableau."""
 
-    EN_TETES = ["Désignation", "Qté", "Unité", "P.U. HT", "TVA", "Remise", "Total HT"]
+    EN_TETES = ["Désignation", "Qté", "Unité", "P.U. HT", "TVA", "Total HT"]
 
     def __init__(self, document):
         super().__init__()
@@ -151,7 +151,7 @@ class ModeleLignes(QAbstractTableModel):
         return 0 if parent.isValid() else len(self.document.lignes)
 
     def columnCount(self, parent=QModelIndex()) -> int:
-        return 0 if parent.isValid() else 7
+        return 0 if parent.isValid() else 6
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
@@ -204,13 +204,9 @@ class ModeleLignes(QAbstractTableModel):
                 return ligne.prix_unitaire if brut else euros(ligne.prix_unitaire)
             if colonne == COL_TVA:
                 return ligne.taux_tva if brut else taux_tva_txt(ligne.taux_tva)
-            if colonne == COL_REMISE:
-                if brut:
-                    return ligne.remise_pct
-                return f"{nombre(ligne.remise_pct)} %" if ligne.remise_pct else ""
 
         if role == Qt.ItemDataRole.TextAlignmentRole:
-            if colonne in (COL_QUANTITE, COL_PU, COL_TOTAL, COL_REMISE):
+            if colonne in (COL_QUANTITE, COL_PU, COL_TOTAL):
                 return DROITE
             if colonne in (COL_UNITE, COL_TVA):
                 return CENTRE
@@ -250,8 +246,6 @@ class ModeleLignes(QAbstractTableModel):
                 ligne.prix_unitaire = float(valeur)
             elif colonne == COL_TVA:
                 ligne.taux_tva = float(valeur)
-            elif colonne == COL_REMISE:
-                ligne.remise_pct = float(valeur)
             else:
                 return False
         except (TypeError, ValueError):
@@ -517,11 +511,10 @@ class EditeurDevis(QWidget):
         self.validite = champ_entier(devis.validite_jours or depot.societe.validite_jours, 999)
         self.validite.setSuffix(" jours")
         self.statut = liste_deroulante(STATUTS_DEVIS, devis.statut)
-        self.remise = champ_pourcent(devis.remise_globale_pct)
         self.acompte = champ_pourcent(devis.acompte_pct)
         self.numero = QLabel(devis.numero or "attribué à l'enregistrement")
 
-        for widget in (self.remise, self.acompte):
+        for widget in (self.acompte,):
             widget.valueChanged.connect(self._recalculer)
         self.validite.valueChanged.connect(self._recalculer)
         self.date.dateChanged.connect(self._recalculer)
@@ -549,8 +542,6 @@ class EditeurDevis(QWidget):
             COL_QUANTITE, DelegueNombre(self, decimales=3, maximum=999_999))
         self.tableau.setItemDelegateForColumn(
             COL_PU, DelegueNombre(self, decimales=2, suffixe=" €"))
-        self.tableau.setItemDelegateForColumn(
-            COL_REMISE, DelegueNombre(self, decimales=2, maximum=100, suffixe=" %"))
         self.tableau.setItemDelegateForColumn(COL_UNITE, DelegueChoix(UNITES, self))
         self.tableau.setItemDelegateForColumn(
             COL_TVA, DelegueChoix(TAUX_TVA, self, formateur=taux_tva_txt))
@@ -562,7 +553,7 @@ class EditeurDevis(QWidget):
         entetes = self.tableau.horizontalHeader()
         entetes.setSectionResizeMode(COL_DESIGNATION, QHeaderView.ResizeMode.Stretch)
         for colonne, largeur in ((COL_QUANTITE, 90), (COL_UNITE, 80), (COL_PU, 110),
-                                 (COL_TVA, 85), (COL_REMISE, 90), (COL_TOTAL, 125)):
+                                 (COL_TVA, 85), (COL_TOTAL, 125)):
             entetes.setSectionResizeMode(colonne, QHeaderView.ResizeMode.Fixed)
             self.tableau.setColumnWidth(colonne, largeur)
         # Hauteur variable : le détail d'une ligne s'affiche sous sa désignation.
@@ -594,6 +585,10 @@ class EditeurDevis(QWidget):
 
     def _construire(self) -> None:
         entete = QFormLayout()
+        # Les champs suivent la largeur de la colonne : un nom de client ou
+        # un objet de chantier tient rarement dans une case par défaut.
+        entete.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         entete.addRow("Numéro", self.numero)
         entete.addRow("Client", self.client)
         entete.addRow("Adresse chantier",
@@ -604,7 +599,6 @@ class EditeurDevis(QWidget):
         droite.addRow("Date", self.date)
         droite.addRow("Validité", self.validite)
         droite.addRow("Statut", self.statut)
-        droite.addRow("Remise globale", self.remise)
         droite.addRow("Acompte", self.acompte)
         droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
 
@@ -833,7 +827,6 @@ class EditeurDevis(QWidget):
             "Date": date_fr(d.date_devis),
             "Validité": f"{d.validite_jours} jours",
             "Statut": d.statut,
-            "Remise globale": f"{nombre(d.remise_globale_pct)} %",
             "Acompte": f"{nombre(d.acompte_pct)} %",
             "Notes internes": d.notes_internes,
         }
@@ -900,8 +893,7 @@ class EditeurDevis(QWidget):
         d = self.devis
         client, objet, adresse = d.client_id, d.objet, d.adresse_chantier
         date_, validite, statut = d.date_devis, d.validite_jours, d.statut
-        remise, acompte, notes = (d.remise_globale_pct, d.acompte_pct,
-                                  d.notes_internes)
+        acompte, notes = d.acompte_pct, d.notes_internes
         index = self.client.findData(client)
         if index >= 0:
             self.client.setCurrentIndex(index)
@@ -910,7 +902,6 @@ class EditeurDevis(QWidget):
         poser_date(self.date, date_)
         self.validite.setValue(validite)
         self.statut.setCurrentText(statut)
-        self.remise.setValue(remise)
         self.acompte.setValue(acompte)
         self.notes.setPlainText(notes)
         self.modele.definir(d)
@@ -940,7 +931,6 @@ class EditeurDevis(QWidget):
         d.date_devis = valeur_date(self.date)
         d.validite_jours = self.validite.value()
         d.statut = self.statut.currentText()
-        d.remise_globale_pct = self.remise.value()
         d.acompte_pct = self.acompte.value()
         d.notes_internes = self.notes.toPlainText().strip()
 

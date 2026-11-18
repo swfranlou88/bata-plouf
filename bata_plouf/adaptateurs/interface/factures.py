@@ -38,7 +38,7 @@ from .commun import (
     rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
 )
 from .devis import (
-    COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TOTAL, COL_TVA,
+    COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_TOTAL, COL_TVA,
     COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes, ecarts_lignes,
     lignes_modifiees, question_lignes,
     ouvrir_fiche_de_la_ligne,
@@ -316,8 +316,6 @@ class EditeurFacture(QWidget):
             COL_QUANTITE, DelegueNombre(self, decimales=3, maximum=999_999))
         self.tableau.setItemDelegateForColumn(
             COL_PU, DelegueNombre(self, decimales=2, suffixe=" €"))
-        self.tableau.setItemDelegateForColumn(
-            COL_REMISE, DelegueNombre(self, decimales=2, maximum=100, suffixe=" %"))
         self.tableau.setItemDelegateForColumn(COL_UNITE, DelegueChoix(UNITES, self))
         self.tableau.setItemDelegateForColumn(
             COL_TVA, DelegueChoix(TAUX_TVA, self, formateur=taux_tva_txt))
@@ -325,7 +323,7 @@ class EditeurFacture(QWidget):
         entetes = self.tableau.horizontalHeader()
         entetes.setSectionResizeMode(COL_DESIGNATION, QHeaderView.ResizeMode.Stretch)
         for colonne, largeur in ((COL_QUANTITE, 90), (COL_UNITE, 80), (COL_PU, 110),
-                                 (COL_TVA, 85), (COL_REMISE, 90), (6, 125)):
+                                 (COL_TVA, 85), (COL_TOTAL, 125)):
             entetes.setSectionResizeMode(colonne, QHeaderView.ResizeMode.Fixed)
             self.tableau.setColumnWidth(colonne, largeur)
         self.tableau.verticalHeader().setSectionResizeMode(
@@ -363,6 +361,8 @@ class EditeurFacture(QWidget):
 
     def _construire(self) -> None:
         gauche = QFormLayout()
+        gauche.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         gauche.addRow("Numéro", self.numero)
         gauche.addRow("Type", self.type)
         gauche.addRow("Devis d'origine", self.origine)
