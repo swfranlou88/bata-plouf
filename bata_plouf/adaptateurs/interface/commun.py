@@ -601,6 +601,13 @@ TEINTE_DEFAIRE_SOMBRE, TEINTE_DEFAIRE_CLAIRE = "#e8705f", "#b3382a"
 
 
 def _sombre(palette=None) -> bool:
+    """Le thème en cours est-il sombre ?
+
+    Sans palette donnée, c'est celle de l'application qui tranche, et c'est
+    presque toujours ce qu'on veut : poser une feuille de style sur un
+    widget y fige une palette, qui ne suit plus le thème ensuite. Demander
+    la sienne à un widget déjà teinté, c'est relire la couleur d'hier.
+    """
     if palette is None:
         palette = QApplication.palette()
     return palette.color(QPalette.ColorRole.Window).lightness() < 128
@@ -618,6 +625,20 @@ def teinte_defaire(palette=None) -> str:
             else TEINTE_DEFAIRE_CLAIRE)
 
 
+def suivre_le_theme(widget, methode) -> None:
+    """Rappelle « methode » quand le système passe du clair au sombre.
+
+    Un widget qui porte une feuille de style ne reçoit plus les changements
+    de palette : Qt tient sa couleur pour fixée à la main et cesse de le
+    prévenir. On écoute donc le système lui-même. La méthode doit être celle
+    d'un QObject : Qt la débranche alors toute seule quand le widget meurt.
+    """
+    application = QApplication.instance()
+    if application is None:
+        return
+    application.styleHints().colorSchemeChanged.connect(methode)
+
+
 class Discret(QLabel):
     """Un texte de second plan, lisible en thème clair comme en sombre.
 
@@ -630,6 +651,10 @@ class Discret(QLabel):
         super().__init__(texte, parent)
         self._teinte = ""
         self._teinter()
+        suivre_le_theme(self, self._au_theme)
+
+    def _au_theme(self, _schema=None) -> None:
+        self._teinter()
 
     def changeEvent(self, evenement):
         if evenement.type() in (QEvent.Type.PaletteChange,
@@ -641,7 +666,7 @@ class Discret(QLabel):
         # Poser la feuille de style change la palette du widget, qui rappelle
         # changeEvent : sans cette comparaison, on tournerait en rond jusqu'à
         # épuisement de la pile.
-        voulue = teinte_discrete(self.palette())
+        voulue = teinte_discrete()
         if voulue == self._teinte:
             return
         self._teinte = voulue
@@ -681,8 +706,43 @@ def colonne(*widgets, marges=(0, 0, 0, 0), espacement=8) -> QWidget:
     return boite
 
 
-def bouton(texte: str, action=None, principal: bool = False) -> QPushButton:
-    b = QPushButton(texte)
+class BoutonRouge(QPushButton):
+    """Le bouton d'un geste qui détruit : il se signale par sa couleur.
+
+    Rouge pour tout ce qui supprime, et rien d'autre : si l'archivage, la
+    copie et la mise à la corbeille se ressemblent tous, le clic de trop se
+    fait un jour. La teinte se recalcule au changement de thème, comme pour
+    les textes discrets.
+    """
+
+    def __init__(self, texte: str = "", parent=None):
+        super().__init__(texte, parent)
+        self._teinte = ""
+        self._teinter()
+        suivre_le_theme(self, self._au_theme)
+
+    def _au_theme(self, _schema=None) -> None:
+        self._teinter()
+
+    def changeEvent(self, evenement):
+        if evenement.type() in (QEvent.Type.PaletteChange,
+                                QEvent.Type.ApplicationPaletteChange):
+            self._teinter()
+        super().changeEvent(evenement)
+
+    def _teinter(self) -> None:
+        # Même précaution que pour « Discret » : poser la feuille de style
+        # change la palette, qui rappellerait changeEvent sans fin.
+        voulue = teinte_defaire()
+        if voulue == self._teinte:
+            return
+        self._teinte = voulue
+        self.setStyleSheet(f"color: {voulue}; font-weight: bold;")
+
+
+def bouton(texte: str, action=None, principal: bool = False,
+           danger: bool = False) -> QPushButton:
+    b = BoutonRouge(texte) if danger else QPushButton(texte)
     if action:
         b.clicked.connect(action)
     if principal:
@@ -818,8 +878,7 @@ class Annonce(QLabel):
 
     def _habit(self) -> str:
         """Clair sur sombre, sombre sur clair : un bandeau se détache."""
-        fond_fenetre = self.palette().color(QPalette.ColorRole.Window)
-        sombre = fond_fenetre.lightness() < 128
+        sombre = _sombre()
         fond = "#eceef1" if sombre else "#2b2e33"
         encre = "#16181c" if sombre else "#f5f6f8"
         return (f"QLabel#annonce {{ background: {fond}; color: {encre};"

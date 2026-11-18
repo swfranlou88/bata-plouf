@@ -32,7 +32,7 @@ from .commun import (
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TOTAL, COL_TVA,
-    COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes,
+    COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes, question_lignes,
     ouvrir_fiche_de_la_ligne,
 )
 from .vues import VueListe
@@ -373,7 +373,7 @@ class EditeurFacture(QWidget):
         self.outils = barre(
             bouton("+ Ligne", self.ajouter_ligne),
             bouton("Bibliothèque…", self.inserer_articles),
-            bouton("Supprimer la ligne", self.supprimer_ligne),
+            bouton("Supprimer la ligne", self.supprimer_ligne, danger=True),
             "-",
             bouton("Émettre la facture", self.emettre, principal=True),
             self.bouton_payee,
@@ -460,7 +460,7 @@ class EditeurFacture(QWidget):
         ne l'est pas, et la facture reste impayée sans qu'on sache pourquoi.
         """
         mode, date = self._reglement_renseigne()
-        vert = teinte_attente(self.palette())
+        vert = teinte_attente()
         attente = f"border: 1px solid {vert}; border-radius: 3px;"
         # Chacun s'allume quand l'autre est rempli et que lui ne l'est pas.
         self.mode_paiement.setStyleSheet("" if mode or not date else attente)
@@ -468,7 +468,7 @@ class EditeurFacture(QWidget):
 
         if self.facture.statut == "payée":
             self.bouton_payee.setText("Enlever le paiement de la facture")
-            rouge = teinte_defaire(self.palette())
+            rouge = teinte_defaire()
             self.bouton_payee.setStyleSheet(
                 f"color: {rouge}; font-weight: bold;")
         else:
@@ -582,8 +582,13 @@ class EditeurFacture(QWidget):
     def supprimer_ligne(self) -> None:
         if not self.facture.modifiable:
             return
-        for rang in sorted((i.row() for i in self.tableau.selectionModel().selectedRows()),
-                           reverse=True):
+        rangs = [i.row() for i in self.tableau.selectionModel().selectedRows()]
+        if not rangs:
+            return
+        if not confirmer(self, "Supprimer de la facture",
+                         question_lignes(self.modele, rangs, "facture")):
+            return
+        for rang in sorted(rangs, reverse=True):
             self.modele.retirer(rang)
 
     # --- totaux ----------------------------------------------------------

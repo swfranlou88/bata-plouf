@@ -135,6 +135,13 @@ sont d'un **bleu-vert sourd** plutôt que du gris des bordures : sur fond
 sombre, ce gris-là se noyait. La teinte se choisit d'après le thème en cours
 et se recalcule si le système bascule pendant que le logiciel tourne.
 
+Tout ce qui supprime porte un **bouton rouge** et demande d'abord : mettre
+une fiche à la corbeille, l'effacer pour de bon, retirer une ligne d'un
+devis ou d'une facture, retirer un matériau de la composition d'un ouvrage,
+retirer le logo. La question nomme ce qui va partir — la ligne, ou la liste
+des lignes quand il y en a plusieurs — plutôt que de les compter. Le rouge
+se recalcule quand le Mac bascule du thème clair au sombre.
+
 Ce qui s'est bien passé se dit par une **annonce** : un message qui paraît
 en bas de la fenêtre, se lit et s'efface au bout de deux secondes et demie,
 sans rien interrompre ni rien demander. Enregistrer un devis, une facture,

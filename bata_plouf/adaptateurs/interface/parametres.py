@@ -123,7 +123,8 @@ class VueParametres(QWidget):
             ("Téléphone", self.telephone),
             ("Courriel", self.email),
             ("Logo", barre(self.logo, bouton("Choisir…", self._choisir_logo),
-                           bouton("Retirer", self._retirer_logo))),
+                           bouton("Retirer", self._retirer_logo,
+                                  danger=True))),
         ]))
         disposition.addWidget(self._groupe("Mentions légales", [
             ("SIRET", self.siret),
@@ -213,6 +214,13 @@ class VueParametres(QWidget):
             self.logo.setText(chemin)
 
     def _retirer_logo(self) -> None:
+        if not self.logo.text().strip():
+            return
+        if not confirmer(self, "Retirer le logo",
+                         "Les documents imprimés n'auront plus de logo.\n\n"
+                         "L'image reste sur le disque : il faudra la "
+                         "rechoisir pour la remettre."):
+            return
         self.logo.setText("")
 
     def _ouvrir_dossier(self) -> None:

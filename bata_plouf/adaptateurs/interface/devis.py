@@ -33,6 +33,32 @@ COL_DESIGNATION, COL_QUANTITE, COL_UNITE, COL_PU, COL_TVA, COL_REMISE, COL_TOTAL
 # --- tableau des lignes ---------------------------------------------------
 
 
+def question_lignes(modele, rangs, mot: str) -> str:
+    """Ce qu'on s'apprête à retirer, nommé plutôt que compté.
+
+    « Supprimer 3 lignes ? » ne dit pas lesquelles : on relit la sélection
+    dans la question, parce que c'est elle qu'on vient de cliquer à la
+    souris et qu'une ligne de trop se voit mal dans un tableau.
+    """
+    noms = []
+    for rang in sorted(rangs):
+        ligne = modele.ligne(rang)
+        nom = (getattr(ligne, "designation", "") or "").strip()
+        if len(nom) > 70:
+            nom = nom[:70] + "…"
+        noms.append(nom or "(sans désignation)")
+
+    article, seul = (("du", "seul le devis") if mot == "devis"
+                     else ("de la", "seule la facture"))
+    fin = f"\n\nLa bibliothèque n'est pas touchée : {seul} change."
+    if len(noms) == 1:
+        return f"Retirer « {noms[0]} » {article} {mot} ?" + fin
+    liste = "\n".join(f"• {nom}" for nom in noms[:6])
+    if len(noms) > 6:
+        liste += f"\n• … et {len(noms) - 6} autre(s)"
+    return f"Retirer ces {len(noms)} lignes {article} {mot} ?\n\n{liste}" + fin
+
+
 class ModeleLignes(QAbstractTableModel):
     """Les lignes d'un devis ou d'une facture, éditables dans le tableau."""
 
@@ -517,7 +543,7 @@ class EditeurDevis(QWidget):
             "-",
             bouton("↑", lambda: self.deplacer(-1)),
             bouton("↓", lambda: self.deplacer(1)),
-            bouton("Supprimer la ligne", self.supprimer_ligne),
+            bouton("Supprimer la ligne", self.supprimer_ligne, danger=True),
         )
 
         bas = QWidget()
@@ -618,9 +644,14 @@ class EditeurDevis(QWidget):
             position += 1
 
     def supprimer_ligne(self) -> None:
-        indexes = self.tableau.selectionModel().selectedRows()
-        for index in sorted((i.row() for i in indexes), reverse=True):
-            self.modele.retirer(index)
+        rangs = [i.row() for i in self.tableau.selectionModel().selectedRows()]
+        if not rangs:
+            return
+        if not confirmer(self, "Supprimer du devis",
+                         question_lignes(self.modele, rangs, "devis")):
+            return
+        for rang in sorted(rangs, reverse=True):
+            self.modele.retirer(rang)
 
     def deplacer(self, pas: int) -> None:
         indexes = self.tableau.selectionModel().selectedRows()

@@ -125,9 +125,10 @@ class VueListe(QWidget):
     def _barre_outils(self) -> QWidget:
         self.bouton_nouveau = bouton(self.libelle_nouveau, self.nouveau, principal=True)
         self.bouton_modifier = bouton(self.libelle_modifier, self.modifier)
-        self.bouton_supprimer = bouton("Supprimer", self.supprimer)
+        self.bouton_supprimer = bouton("Supprimer", self.supprimer, danger=True)
         self.bouton_restaurer = bouton("Restaurer", self.restaurer)
-        self.bouton_effacer = bouton("Effacer définitivement", self.effacer)
+        self.bouton_effacer = bouton("Effacer définitivement", self.effacer,
+                                     danger=True)
 
         self.actions_propres = self.actions()
         self.groupe_actif = ([self.bouton_nouveau, self.bouton_modifier]

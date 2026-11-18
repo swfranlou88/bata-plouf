@@ -15,7 +15,7 @@ from ...domaine.chantier import est_du_temps
 from ..impression.styles import echapper
 from .commun import (
     CENTRE, DROITE, GAUCHE, barre, bouton, champ_date, champ_euros,
-    champ_texte, discret, etiquette_client, infobulles_si_tronque,
+    champ_texte, confirmer, discret, etiquette_client, infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, teinte_modifiee, valeur_date,
 )
 
@@ -246,7 +246,7 @@ class DialogueBase(QDialog):
         if self._depart is None:
             return
         maintenant = self.champs()
-        teinte = teinte_modifiee(self.palette())
+        teinte = teinte_modifiee()
         for rang in range(self.formulaire.rowCount()):
             intitule = self.formulaire.itemAt(rang, QFormLayout.ItemRole.LabelRole)
             if intitule is None or not isinstance(intitule.widget(), QLabel):
@@ -547,7 +547,7 @@ class DialogueArticle(DialogueBase):
         self.resume_composition = discret("")
         dedans.addWidget(barre(
             bouton("Ajouter…", self._ajouter_composant),
-            bouton("Retirer", self._retirer_composant),
+            bouton("Retirer", self._retirer_composant, danger=True),
             "-", self.resume_composition))
         self.composants.dataChanged.connect(lambda *_: self._resumer())
         self.composants.modelReset.connect(self._resumer)
@@ -577,6 +577,17 @@ class DialogueArticle(DialogueBase):
     def _retirer_composant(self) -> None:
         rangs = {i.row() for i in
                  self.table_composants.selectionModel().selectedRows()}
+        if not rangs:
+            return
+        noms = [(self.composants.lignes[r].designation or "").strip()
+                for r in sorted(rangs) if r < len(self.composants.lignes)]
+        quoi = (f"« {noms[0]} »" if len(noms) == 1
+                else "\n\n" + "\n".join(f"• {n}" for n in noms[:6]))
+        if not confirmer(self, "Retirer de la composition",
+                         f"Retirer {quoi} de la composition de cet ouvrage ?"
+                         "\n\nLe matériau reste au catalogue ; seul son emploi "
+                         "dans cet ouvrage disparaît."):
+            return
         self.composants.retirer(rangs)
         self._resumer()
 
