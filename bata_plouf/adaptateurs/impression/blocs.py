@@ -282,6 +282,12 @@ def tableau(ctx: Contexte) -> str:
         rangs.append(f"<tr><td colspan='{len(cols)}' style='padding:10px;'>"
                      "<i>Aucune ligne</i></td></tr>")
 
+    mentions = mentions_du_document(ctx)
+    if mentions:
+        rangs.append(
+            f"<tr><td colspan='{len(cols)}' style='padding:8px 6px; "
+            f"color:{p.gris};'><i>{echapper(mentions)}</i></td></tr>")
+
     return (f"<table width='100%' cellspacing='0' cellpadding='0' "
             f"style='font-size:{g.taille_police - 0.5:.1f}pt;'>{''.join(rangs)}</table>")
 
@@ -331,6 +337,21 @@ def _rang_prestation(ctx: Contexte, ligne: Ligne, cols: list[ColonneDevis],
     return f"<tr>{cellules}</tr>"
 
 
+def mentions_du_document(ctx: Contexte) -> str:
+    """Les mentions à écrire au bas du tableau, ou rien.
+
+    Elles restent définies dans les Paramètres — un texte par genre de
+    pièce — et c'est à l'impression qu'elles viennent se poser, en dernière
+    ligne du tableau plutôt qu'en pavé de bas de page : on les lit là où
+    finit ce qu'on vient de chiffrer. Une pièce peut écrire les siennes,
+    elles l'emportent alors.
+    """
+    if not ctx.gabarit.afficher_mentions:
+        return ""
+    return (ctx.document.mentions
+            or mentions_par_defaut(ctx.societe, ctx.est_facture))
+
+
 def conditions_et_recapitulatif(ctx: Contexte) -> str:
     """Conditions de règlement à gauche, récapitulatif chiffré à droite."""
     g, p, d, t = ctx.gabarit, ctx.palette, ctx.document, ctx.totaux
@@ -342,10 +363,6 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
             s, ctx.est_facture, taux_reduit(d))
         if texte:
             gauche.append(f"<b>Conditions de règlement</b><br>{echapper(texte)}")
-    if g.afficher_mentions:
-        texte = d.mentions or mentions_par_defaut(s, ctx.est_facture)
-        if texte:
-            gauche.append(f"<b>Mentions</b><br>{echapper(texte)}")
     if any(l.taux == 0.0 for l in t.tva):
         gauche.append("<i>Autoliquidation de la TVA : TVA due par le preneur, "
                       "article 283-2 nonies du CGI.</i>")

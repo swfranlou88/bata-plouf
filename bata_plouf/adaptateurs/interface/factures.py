@@ -385,7 +385,7 @@ class EditeurFacture(QWidget):
 
         self.outils = barre(
             bouton("+ Ligne", self.ajouter_ligne),
-            bouton("Bibliothèque…", self.inserer_articles),
+            bouton("Bibliothèque…", self.inserer_articles, principal=True),
             bouton("Supprimer la ligne", self.supprimer_ligne, danger=True),
             "-",
             bouton("Émettre la facture", self.emettre, principal=True),

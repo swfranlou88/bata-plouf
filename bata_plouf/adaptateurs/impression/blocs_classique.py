@@ -22,7 +22,9 @@ from decimal import Decimal
 
 from ...domaine import Ligne, date_fr, euros, nombre
 from ...domaine.calculs import taux_reduit
-from .blocs import Contexte, conditions_par_defaut, mentions_par_defaut
+from .blocs import (
+    Contexte, conditions_par_defaut, mentions_du_document,
+)
 from .styles import echapper, mm_en_px_css
 
 NOIR = "#000000"
@@ -246,6 +248,12 @@ def tableau(ctx: Contexte) -> str:
         else:
             rangs.append(_rang_prestation(ctx, ligne, cols, dernier, petit))
 
+    mentions = mentions_du_document(ctx)
+    if mentions:
+        rangs.append(
+            f"<tr><td colspan='{dernier + 1}' style='padding:6px 5px; "
+            f"{_bordures(0, dernier)}'><i>{echapper(mentions)}</i></td></tr>")
+
     rangs.append(_rang_final(ctx, cols, dernier))
     return (f"<table width='100%' cellspacing='0' cellpadding='0' "
             f"style='font-size:{g.taille_police:.1f}pt;'>{''.join(rangs)}</table>"
@@ -343,10 +351,6 @@ def _mentions(ctx: Contexte) -> str:
     if g.afficher_conditions:
         texte = d.conditions or conditions_par_defaut(
             s, ctx.est_facture, taux_reduit(d))
-        if texte:
-            morceaux.append(echapper(texte))
-    if g.afficher_mentions:
-        texte = d.mentions or mentions_par_defaut(s, ctx.est_facture)
         if texte:
             morceaux.append(echapper(texte))
     if any(l.taux == 0.0 for l in ctx.totaux.tva):

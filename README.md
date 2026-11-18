@@ -141,6 +141,14 @@ met toutes les lignes chiffrées au même taux d'un seul geste. Les lignes à
 l'autoliquidation, décidée ligne par ligne. Le taux proposé d'emblée est
 celui qui domine déjà le document. Une facture émise ne s'y prête plus.
 
+Les **mentions** se lisent en dernière ligne du tableau, en italique sous ce
+qui vient d'être chiffré, et non plus dans le pavé du bas : c'est là qu'on
+les cherche en relisant une pièce. Elles restent définies dans les
+Paramètres — un texte pour les devis, un autre pour les factures — et c'est
+à l'impression qu'elles se posent, donc rien ne passe d'un devis à sa
+facture. Une pièce qui écrit les siennes l'emporte, et le réglage du modèle
+peut les taire.
+
 Le bas de page n'est plus recopié dans le document à sa création : il se
 choisit à l'impression, d'après le type du document et son taux de TVA —
 devis au taux normal, devis au taux réduit, facture. Un brouillon suit donc
