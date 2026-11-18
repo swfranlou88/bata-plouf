@@ -40,12 +40,6 @@ LIBELLES_FACTURE = {
 MODES_PAIEMENT = ["", "Virement", "Chèque", "Espèces", "Carte bancaire", "Prélèvement"]
 STATUTS_CHANTIER = ["prévu", "en cours", "terminé", "annulé"]
 TYPES_ARTICLE = ["article", "main d'œuvre", "ouvrage"]
-FAMILLES = [
-    "Gros œuvre", "Maçonnerie", "Fondations", "Dallage", "Enduits",
-    "Couverture", "Démolition", "Terrassement", "Carrelage", "Divers",
-]
-
-
 def nouvel_id() -> str:
     return uuid.uuid4().hex[:12]
 
@@ -263,7 +257,6 @@ class Article(Archivable):
     notes_internes: str = ""
     type: str = "article"
     fournisseur: str = ""
-    famille: str = "Maçonnerie"
     unite: str = "u"
     prix_achat: float = 0.0
     prix_vente: float = 0.0
@@ -291,7 +284,7 @@ class Article(Archivable):
         t = texte.lower()
         return any(t in (c or "").lower()
                    for c in [self.reference, self.designation, self.detail,
-                             self.notes_internes, self.famille, self.fournisseur])
+                             self.notes_internes, self.fournisseur])
 
 
 @dataclass

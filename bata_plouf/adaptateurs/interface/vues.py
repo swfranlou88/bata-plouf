@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from ...domaine import FAMILLES, TYPES_ARTICLE, euros, nombre
+from ...domaine import TYPES_ARTICLE, euros, nombre
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, DelegueAmorce, ModeleListe, activer_le_tri,
@@ -273,10 +273,9 @@ class VueCatalogue(VueListe):
     # disparaître des deux écrans.
     type_cree = "article"
     types_filtrables = ["article", "main d'œuvre"]
-    # Ce sur quoi porte le champ de recherche, et rien d'autre. La famille
-    # en est exclue : elle a sa propre liste déroulante juste à côté, et
-    # presque toute la bibliothèque porte « Maçonnerie » — taper les trois
-    # premières lettres rendait les mille deux cents fiches.
+    # Ce sur quoi porte le champ de recherche, et rien d'autre : le nom et
+    # la référence du fournisseur. Chercher dans le détail ou les notes
+    # ramenait des fiches dont rien, à l'écran, ne disait pourquoi.
     champs_recherche = ("designation", "reference")
 
     def retient(self, article) -> bool:
@@ -290,17 +289,13 @@ class VueCatalogue(VueListe):
     recherche_par_debut = True
 
     def __init__(self, depot, parent=None):
-        self.famille = liste_deroulante(["Toutes les familles"] + FAMILLES)
         self.type = liste_deroulante(["Tous les types"] + self.types_filtrables)
         super().__init__(depot, parent)
-        self.famille.currentIndexChanged.connect(self.rafraichir)
         self.type.currentIndexChanged.connect(self.rafraichir)
 
     def filtres(self):
         # Un seul type possible : la liste déroulante n'aurait rien à offrir.
-        if len(self.types_filtrables) < 2:
-            return [self.famille]
-        return [self.famille, self.type]
+        return [] if len(self.types_filtrables) < 2 else [self.type]
 
     def actions(self):
         return [bouton("Dupliquer", self.dupliquer)]
@@ -310,7 +305,6 @@ class VueCatalogue(VueListe):
             Colonne("Réf. fourn.", lambda a: a.reference, largeur=100),
             Colonne("Nom", lambda a: a.designation, gras=True),
             Colonne("Fournisseur", lambda a: a.fournisseur, largeur=120),
-            Colonne("Famille", lambda a: a.famille, largeur=120),
             Colonne("Un.", lambda a: a.unite, largeur=55, alignement=CENTRE),
             Colonne("Achat", lambda a: euros(a.prix_achat), largeur=95,
                     alignement=DROITE, cle=lambda a: a.prix_achat or 0.0),
@@ -328,10 +322,8 @@ class VueCatalogue(VueListe):
         ]
 
     def charger(self):
-        famille = self.famille.currentText()
         type_ = self.type.currentText()
         articles = self.depot.articles(
-            famille="" if famille.startswith("Toutes") else famille,
             type_=("" if type_.startswith("Tous") or len(self.types_filtrables) < 2
                    else type_),
             supprimes=self.archives,
@@ -360,17 +352,6 @@ class VueCatalogue(VueListe):
 
     def desarchiver(self, article):
         self.depot.restaurer_article(article.id)
-
-    def rafraichir(self):
-        familles = sorted(set(FAMILLES) | set(self.depot.familles()))
-        courante = self.famille.currentText()
-        if [self.famille.itemText(i) for i in range(1, self.famille.count())] != familles:
-            self.famille.blockSignals(True)
-            self.famille.clear()
-            self.famille.addItems(["Toutes les familles"] + familles)
-            self.famille.setCurrentIndex(max(0, self.famille.findText(courante)))
-            self.famille.blockSignals(False)
-        super().rafraichir()
 
     def nouveau(self):
         from ...domaine import Article

@@ -477,16 +477,16 @@ def main() -> int:
              relu.id in [a.id for a in depot.articles("2.930")])
 
     # Le bandeau des écrans Articles et Ouvrages, lui, ne cherche que sur
-    # le nom et le code : la famille a sa propre liste déroulante, et
-    # presque toute la bibliothèque porte la même.
+    # le nom et la référence du fournisseur.
     from bata_plouf.adaptateurs.interface.vues import VueCatalogue
     cherche = VueCatalogue.correspond
     class Bandeau:
         champs_recherche = VueCatalogue.champs_recherche
         def __init__(self, texte):
             self.recherche = type("Champ", (), {"text": lambda _: texte})()
-    relu.designation, relu.famille = "Carrelage posé", "Maçonnerie"
+    relu.designation = "Carrelage posé"
     relu.reference = "XX"
+    relu.notes_internes = "maçonnerie"
     verifier("le début du nom trouve la fiche", cherche(Bandeau("carrelage"), relu))
     verifier("le code aussi", cherche(Bandeau("xx"), relu))
     verifier("l'accent ne gêne pas",
@@ -494,7 +494,7 @@ def main() -> int:
              and cherche(Bandeau("carrelage posé"), relu))
     verifier("mais pas un mot pris au milieu",
              not cherche(Bandeau("posé"), relu))
-    verifier("ni la famille", not cherche(Bandeau("maçonnerie"), relu))
+    verifier("ni les notes internes", not cherche(Bandeau("maçonnerie"), relu))
 
     from bata_plouf.adaptateurs.interface.commun import amorce
     verifier("la part surlignée couvre ce qu'on a tapé",

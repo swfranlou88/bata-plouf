@@ -459,12 +459,10 @@ class DepotFichiers:
 
     # --- bibliothèque de prix --------------------------------------------
 
-    def articles(self, recherche: str = "", famille: str = "", type_: str = "",
+    def articles(self, recherche: str = "", type_: str = "",
                  supprimes: bool = False) -> list[Article]:
         valeurs = sorted((a for a in self._articles.values() if a.supprime == supprimes),
-                         key=lambda a: (a.famille.lower(), a.designation.lower()))
-        if famille:
-            valeurs = [a for a in valeurs if a.famille == famille]
+                         key=lambda a: a.designation.lower())
         if type_:
             valeurs = [a for a in valeurs if a.type == type_]
         if recherche:
@@ -501,9 +499,6 @@ class DepotFichiers:
 
     def _ecrire_articles(self) -> None:
         ecrire_json(self.f_articles, [en_dict(a) for a in self._articles.values()])
-
-    def familles(self) -> list[str]:
-        return sorted({a.famille for a in self._articles.values() if a.famille})
 
     # --- devis -----------------------------------------------------------
 

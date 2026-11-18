@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...domaine import (
-    Article, Chantier, Client, Composant, FAMILLES, STATUTS_CHANTIER,
+    Article, Chantier, Client, Composant, STATUTS_CHANTIER,
     TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre,
 )
 from ...domaine.chantier import est_du_temps
@@ -479,10 +479,6 @@ class DialogueArticle(DialogueBase):
             "Précision imprimée sous la désignation, sur le devis du client")
         self.ajouter("Détail imprimé", self.detail)
         self.type = self.ajouter("Type", liste_deroulante(TYPES_ARTICLE, a.type))
-        familles = sorted(set(FAMILLES) | set(depot.familles()))
-        self.famille = liste_deroulante(familles, a.famille)
-        self.famille.setEditable(True)
-        self.ajouter("Famille", self.famille)
         self.unite = self.ajouter("Unité", liste_deroulante(UNITES, a.unite))
         self.prix_achat = champ_euros(a.prix_achat)
         self.prix_vente = champ_euros(a.prix_vente)
@@ -637,7 +633,6 @@ class DialogueArticle(DialogueBase):
         a.notes_internes = self.notes.toPlainText().strip()
         a.type = self.type.currentText()
         a.fournisseur = self.fournisseur.text().strip()
-        a.famille = self.famille.currentText().strip()
         a.unite = self.unite.currentText()
         a.prix_achat = self.prix_achat.value()
         a.prix_vente = self.prix_vente.value()

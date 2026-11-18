@@ -126,13 +126,12 @@ def clients_des_entetes(source: Path) -> list[dict]:
 
 
 def articles_du_stock(chemin: Path) -> list[dict]:
-    """Une feuille par corps de métier ; on en fait des familles."""
+    """Une feuille par corps de métier, toutes versées à la bibliothèque."""
     import xlrd
 
     articles = []
     livre = xlrd.open_workbook(str(chemin))
     for feuille in livre.sheets():
-        famille = feuille.name.strip().title()
         for r in range(feuille.nrows):
             valeurs = [str(feuille.cell_value(r, c)).strip()
                        for c in range(feuille.ncols)]
@@ -144,8 +143,7 @@ def articles_du_stock(chemin: Path) -> list[dict]:
             if designation.upper() == feuille.name.strip().upper():
                 continue
             _, unite_propre = quantite_et_unite("1 " + unite)
-            articles.append({"designation": designation, "unite": unite_propre,
-                             "famille": famille})
+            articles.append({"designation": designation, "unite": unite_propre})
     return articles
 
 
@@ -224,13 +222,13 @@ def convertir(source: Path, destination: Path) -> dict:
     if stock.exists():
         vus = set()
         for a in articles_du_stock(stock):
-            cle = (a["designation"].lower(), a["famille"])
+            cle = a["designation"].lower()
             if cle in vus:
                 continue
             vus.add(cle)
             depot.enregistrer_article(Article(
                 designation=a["designation"], unite=a["unite"],
-                famille=a["famille"], type="article"))
+                type="article"))
             bilan["articles"] += 1
 
     for chemin in sorted(source.glob("*.xls")):

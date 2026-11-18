@@ -224,7 +224,6 @@ CHAMPS = {
         Champ("reference", "Référence", ("reference", "ref", "code")),
         Champ("designation", "Désignation", ("designation", "libelle", "intitule", "article")),
         Champ("detail", "Détail", ("detail", "description", "complement")),
-        Champ("famille", "Famille", ("famille", "categorie", "groupe", "lot")),
         Champ("unite", "Unité", ("unite", "un", "ut")),
         Champ("prix_achat", "Prix d'achat", ("prixachat", "achat", "pa", "cout"), "nombre"),
         Champ("prix_vente", "Prix de vente", ("prixvente", "vente", "pv", "prix",
@@ -465,13 +464,12 @@ class Importateur:
             article = article or Article()
             article.designation = designation
             article.reference = reference
-            for cle in ("detail", "famille", "unite"):
+            for cle in ("detail", "unite"):
                 setattr(article, cle, valeur(ligne, cle))
             article.prix_achat = valeur(ligne, "prix_achat")
             article.prix_vente = valeur(ligne, "prix_vente") or article.prix_achat
             tva = valeur(ligne, "taux_tva")
             article.taux_tva = tva if tva else self.depot.societe.taux_tva_defaut
-            article.famille = article.famille or "Divers"
             article.unite = article.unite or "u"
             article.ref_externe = ref
             if not simulation:

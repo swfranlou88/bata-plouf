@@ -322,7 +322,7 @@ def ouvrir_fiche_de_la_ligne(parent, depot, ligne, reportable: bool) -> bool:
 # chiffrées reprises de l'ancien logiciel qu'on retrouve en bibliothèque,
 # 1234 sont des ouvrages — une prestation posée, au prix de vente. Les
 # articles restent à portée, pour le sable et le ciment qu'on livre.
-FAMILLES_BIBLIOTHEQUE = ["Ouvrages", "Articles", "Tout"]
+GENRES_BIBLIOTHEQUE = ["Ouvrages", "Articles", "Tout"]
 
 
 class DialogueChoixArticle(QDialog):
@@ -334,9 +334,9 @@ class DialogueChoixArticle(QDialog):
 
         # Sur quoi la bibliothèque s'ouvre : les ouvrages pour un devis, les
         # articles pour composer un ouvrage.
-        self.genre = liste_deroulante(FAMILLES_BIBLIOTHEQUE,
-                                      genre if genre in FAMILLES_BIBLIOTHEQUE
-                                      else FAMILLES_BIBLIOTHEQUE[0])
+        self.genre = liste_deroulante(GENRES_BIBLIOTHEQUE,
+                                      genre if genre in GENRES_BIBLIOTHEQUE
+                                      else GENRES_BIBLIOTHEQUE[0])
         self.genre.currentIndexChanged.connect(self.rafraichir)
         self.compte = discret("")
 
@@ -348,7 +348,6 @@ class DialogueChoixArticle(QDialog):
         self.modele = ModeleListe([
             Colonne("Réf.", lambda a: a.reference, largeur=90),
             Colonne("Désignation", lambda a: a.designation, gras=True),
-            Colonne("Famille", lambda a: a.famille, largeur=130),
             Colonne("Un.", lambda a: a.unite, largeur=55, alignement=CENTRE),
             Colonne("Vente", lambda a: euros(a.prix_vente), largeur=100,
                     alignement=DROITE, cle=lambda a: a.prix_vente or 0.0),
@@ -364,7 +363,7 @@ class DialogueChoixArticle(QDialog):
         self.tableau.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tableau.doubleClicked.connect(self.accept)
         # Le même tri que sur les listings : le maçon qui cherche un article
-        # veut pouvoir classer la bibliothèque par prix ou par famille.
+        # veut pouvoir classer la bibliothèque par nom ou par prix.
         activer_le_tri(self.tableau, self.modele)
         self.surbrillance = DelegueAmorce(self.tableau)
         for colonne in (0, 1):  # la référence et la désignation
@@ -394,7 +393,7 @@ class DialogueChoixArticle(QDialog):
                     if genre == "Tout"
                     or (a.type == "ouvrage") == (genre == "Ouvrages")]
         # Comme sur les écrans de la bibliothèque : le début du nom ou du
-        # code, pas la famille que presque toutes les fiches ont en commun.
+        # code, et rien d'autre.
         cherche = self.recherche.text().strip()
         if cherche:
             articles = [a for a in articles

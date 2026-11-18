@@ -74,7 +74,7 @@ class ModeleListe(QAbstractTableModel):
         self.colonnes = colonnes
         self.elements: list = list(elements or [])
         # L'ordre dans lequel le dépôt a fourni les éléments. Il n'est pas
-        # arbitraire — devis du plus récent, articles par famille — donc on
+        # arbitraire — devis du plus récent, articles par nom — donc on
         # le garde pour pouvoir y revenir, et pour que le tri s'applique
         # toujours dessus : à valeurs égales, cet ordre-là tranche.
         self._naturel: list = list(self.elements)
@@ -153,8 +153,8 @@ def activer_le_tri(tableau, modele):
 
     Trois états se succèdent sur une même colonne : croissant, décroissant,
     puis l'ordre d'origine. Le troisième compte, car cet ordre n'est pas
-    quelconque — les devis arrivent du plus récent, les articles par
-    famille — et sans lui on ne pourrait plus y revenir sans changer d'écran.
+    quelconque — les devis arrivent du plus récent, les articles par nom —
+    et sans lui on ne pourrait plus y revenir sans changer d'écran.
 
     On ne passe pas par setSortingEnabled de Qt, qui trierait d'office sur la
     première colonne dès l'ouverture et effacerait justement cet ordre.
