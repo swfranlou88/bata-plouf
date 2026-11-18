@@ -817,7 +817,7 @@ class EditeurFacture(QWidget):
 class VueFactures(VueListe):
     nom = "Factures"
     mot_element = "facture"
-    libelle_nouveau = "Facture directe"
+    libelle_nouveau = "Nouvelle facture"
     libelle_modifier = "Ouvrir"
     indication_recherche = "Numéro, client, objet…"
 
