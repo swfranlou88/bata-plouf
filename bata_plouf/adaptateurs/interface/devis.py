@@ -25,6 +25,7 @@ from .commun import (
     poser_date,
     annoncer, confirmer, decider_sortie, discret, ecouter_changements,
     etiquette_client, infobulles_si_tronque, marquer_modifications,
+    teinte_modifiee,
     liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .dialogues import DialogueArticle
@@ -34,6 +35,54 @@ COL_DESIGNATION, COL_QUANTITE, COL_UNITE, COL_PU, COL_TVA, COL_REMISE, COL_TOTAL
 
 
 # --- tableau des lignes ---------------------------------------------------
+
+
+def resume_ligne(ligne) -> str:
+    """Ce qu'une ligne dit en un coup d'œil, pour la comparer à elle-même."""
+    nom = (ligne.designation or "").strip() or "(sans désignation)"
+    if not ligne.chiffree:
+        return nom
+    resume = (f"{nom} — {nombre(ligne.quantite, 3)} {ligne.unite} × "
+              f"{euros(ligne.prix_unitaire)}, TVA {taux_tva_txt(ligne.taux_tva)}")
+    if ligne.remise_pct:
+        resume += f", remise {nombre(ligne.remise_pct)} %"
+    return resume
+
+
+def _anciennes_lignes(brut) -> dict:
+    return {d.get("id"): depuis_dict(Ligne, d)
+            for d in (brut or {}).get("lignes", [])}
+
+
+def ecarts_lignes(brut, document) -> list[tuple[str, str, str]]:
+    """Ce qui a changé ligne à ligne, chaque ligne suivie par son identité.
+
+    Comparer les totaux ne suffisait pas : changer la TVA d'un poste ne bouge
+    pas le total HT, et le changement passait inaperçu — la pièce se disait
+    intacte alors qu'on venait d'y toucher.
+    """
+    anciennes = _anciennes_lignes(brut)
+    ecarts, vues = [], set()
+    for rang, ligne in enumerate(document.lignes, start=1):
+        vues.add(ligne.id)
+        ancienne = anciennes.get(ligne.id)
+        if ancienne is None:
+            ecarts.append((f"Ligne {rang}", "(absente)", resume_ligne(ligne)))
+        elif resume_ligne(ancienne) != resume_ligne(ligne):
+            ecarts.append((f"Ligne {rang}", resume_ligne(ancienne),
+                           resume_ligne(ligne)))
+    for id_, ancienne in anciennes.items():
+        if id_ not in vues:
+            ecarts.append(("Ligne retirée", resume_ligne(ancienne), "(supprimée)"))
+    return ecarts
+
+
+def lignes_modifiees(brut, document) -> set[str]:
+    """Les identités des lignes qui ne sont plus celles d'origine."""
+    anciennes = _anciennes_lignes(brut)
+    return {ligne.id for ligne in document.lignes
+            if ligne.id not in anciennes
+            or resume_ligne(anciennes[ligne.id]) != resume_ligne(ligne)}
 
 
 def question_lignes(modele, rangs, mot: str) -> str:
@@ -70,6 +119,20 @@ class ModeleLignes(QAbstractTableModel):
     def __init__(self, document):
         super().__init__()
         self.document = document
+        # Les lignes qui ne sont plus d'origine : elles s'écrivent en orange,
+        # comme l'intitulé d'un champ modifié.
+        self.modifiees: set[str] = set()
+
+    def marquer_modifiees(self, identites) -> None:
+        voulues = set(identites)
+        # Sans cette comparaison, repeindre relancerait le recalcul, qui
+        # redemanderait de repeindre : on tournerait jusqu'à la pile pleine.
+        if voulues == self.modifiees:
+            return
+        self.modifiees = voulues
+        if self.rowCount():
+            self.dataChanged.emit(self.index(0, 0),
+                                  self.index(self.rowCount() - 1, COL_TOTAL))
 
     def definir(self, document) -> None:
         self.beginResetModel()
@@ -158,8 +221,11 @@ class ModeleLignes(QAbstractTableModel):
         if role == Qt.ItemDataRole.BackgroundRole and ligne.type == "section":
             return QBrush(QColor(0, 0, 0, 28))
 
-        if role == Qt.ItemDataRole.ForegroundRole and ligne.type == "texte":
-            return QBrush(QColor(128, 128, 128))
+        if role == Qt.ItemDataRole.ForegroundRole:
+            if ligne.id in self.modifiees:
+                return QBrush(QColor(teinte_modifiee()))
+            if ligne.type == "texte":
+                return QBrush(QColor(128, 128, 128))
 
         return None
 
@@ -518,8 +584,7 @@ class EditeurDevis(QWidget):
         # L'état de référence : ce à quoi on comparera pour savoir si quelque
         # chose a bougé. Pris en dernier, une fois la liste des clients
         # remplie — avant, le sélecteur est vide et se dirait modifié.
-        self._brut = en_dict(devis)
-        self._depart = self._etat()
+        self.retenir_etat()
         self._veiller()
 
     # --- montage ---------------------------------------------------------
@@ -745,8 +810,6 @@ class EditeurDevis(QWidget):
             "Remise globale": f"{nombre(d.remise_globale_pct)} %",
             "Acompte": f"{nombre(d.acompte_pct)} %",
             "Notes internes": d.notes_internes,
-            "Lignes": f"{len(d.lignes)} ligne(s), "
-                      f"{euros(d.totaux().total_ht)} HT",
         }
 
     def _veiller(self) -> None:
@@ -760,18 +823,32 @@ class EditeurDevis(QWidget):
         ecouter_changements(self.tableau, self._marquer)
 
     def _marquer(self) -> None:
-        """Met en orange l'intitulé de ce qui n'est plus d'origine."""
+        """Met en orange ce qui n'est plus d'origine : intitulés et lignes."""
         if self._depart is None:
             return
         marquer_modifications(self.differences(), self._formulaires,
                               self._groupes)
+        self.modele.marquer_modifiees(lignes_modifiees(self._brut, self.devis))
 
     def differences(self) -> list[tuple[str, str, str]]:
         if self._depart is None:
             return []
-        return [(nom, self._depart.get(nom, ""), valeur)
-                for nom, valeur in self._etat().items()
-                if valeur != self._depart.get(nom, "")]
+        entete = [(nom, self._depart.get(nom, ""), valeur)
+                  for nom, valeur in self._etat().items()
+                  if valeur != self._depart.get(nom, "")]
+        return entete + ecarts_lignes(self._brut, self.devis)
+
+    def retenir_etat(self) -> None:
+        """Fixe la référence : voilà le devis tel qu'il est enregistré.
+
+        À l'ouverture, et après chaque enregistrement. L'oublier après une
+        sauvegarde, c'est garder pour référence un état périmé : la pièce se
+        disait modifiée alors qu'elle était écrite, et l'abandon d'après
+        défaisait en mémoire ce qui venait d'être enregistré.
+        """
+        self._brut = en_dict(self.devis)
+        self._depart = self._etat()
+        self._marquer()
 
     def oublier_modifications(self) -> None:
         """Remet le devis dans l'état où on l'a trouvé.
@@ -815,7 +892,13 @@ class EditeurDevis(QWidget):
 
     def peut_quitter(self) -> bool:
         """Pose la question avant de laisser partir, et agit sur la réponse."""
-        choix = decider_sortie(self, self.differences(), "le devis")
+        ecarts = self.differences()
+        if not ecarts:
+            # Rien à demander, et surtout rien à défaire : remettre la pièce
+            # dans son état d'ouverture effacerait ce qu'on vient d'y
+            # enregistrer.
+            return True
+        choix = decider_sortie(self, ecarts, "le devis")
         if choix == "rester":
             return False
         if choix == "enregistrer":
@@ -851,6 +934,7 @@ class EditeurDevis(QWidget):
             alerter(self, "Client manquant", "Choisissez le client avant d'enregistrer le devis.")
             return False
         self.depot.enregistrer_devis(self.devis)
+        self.retenir_etat()
         self.numero.setText(self.devis.numero)
         self.enregistre.emit()
         return True

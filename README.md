@@ -164,6 +164,18 @@ ce qui est parti chez le client doit se réimprimer à l'identique, même si
 les textes changent ensuite. Un texte écrit à la main dans le document
 l'emporte toujours.
 
+Les **lignes** se comparent une à une, chacune suivie par son identité :
+« Ligne 1 : Enduit — 10 m2 × 40,00 €, TVA 20 % → TVA 10 % », et les ajouts
+et retraits se disent aussi. Une ligne qui n'est plus d'origine s'écrit en
+orange dans le tableau, comme l'intitulé d'un champ modifié. Comparer les
+seuls totaux ne suffisait pas : changer la TVA d'un poste ne bouge pas le
+total HT, et la pièce se disait intacte alors qu'on venait d'y toucher.
+
+Enregistrer **fixe la nouvelle référence** : ce qui est écrit n'est plus
+une modification en attente. Sans cela, la pièce restait « modifiée » après
+sa sauvegarde, et un départ sans enregistrer défaisait en mémoire ce qui
+venait d'être enregistré.
+
 Quitter une pièce modifiée — en refermant une fiche, en cliquant dans le
 menu **ou par « Retour à la liste »** — pose la même question, avec la liste de ce qui a changé :
 « Objet : Façade → Façade arrière », « Lignes : 1 ligne, 400,00 € HT →

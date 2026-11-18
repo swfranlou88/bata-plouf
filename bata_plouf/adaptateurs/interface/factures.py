@@ -37,7 +37,8 @@ from .commun import (
 )
 from .devis import (
     COL_DESIGNATION, COL_PU, COL_QUANTITE, COL_REMISE, COL_TOTAL, COL_TVA,
-    COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes, question_lignes,
+    COL_UNITE, DelegueChoix, DelegueNombre, ModeleLignes, ecarts_lignes,
+    lignes_modifiees, question_lignes,
     ouvrir_fiche_de_la_ligne,
 )
 from .vues import VueListe
@@ -353,8 +354,7 @@ class EditeurFacture(QWidget):
         self._recalculer()
         # L'état de référence : ce à quoi on comparera pour savoir si quelque
         # chose a bougé. Pris en dernier, la liste des clients remplie.
-        self._brut = en_dict(facture)
-        self._depart = self._etat()
+        self.retenir_etat()
         self._veiller()
 
     # --- montage ---------------------------------------------------------
@@ -519,6 +519,7 @@ class EditeurFacture(QWidget):
         self.date_paiement.setDate(self.date_paiement.minimumDate())
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
+        self.retenir_etat()
         self.enregistre.emit()
         annoncer(self, f"Facture {self.facture.numero} de nouveau en attente "
                  "de règlement")
@@ -672,8 +673,6 @@ class EditeurFacture(QWidget):
                 "Adresse chantier": f.adresse_chantier,
                 "Date": date_fr(f.date_facture),
                 "Notes internes": f.notes_internes,
-                "Lignes": f"{len(f.lignes)} ligne(s), "
-                          f"{euros(f.totaux().total_ht)} HT",
             })
         return etat
 
@@ -688,18 +687,31 @@ class EditeurFacture(QWidget):
         ecouter_changements(self.tableau, self._marquer)
 
     def _marquer(self) -> None:
-        """Met en orange l'intitulé de ce qui n'est plus d'origine."""
+        """Met en orange ce qui n'est plus d'origine : intitulés et lignes."""
         if self._depart is None:
             return
         marquer_modifications(self.differences(), self._formulaires,
                               self._groupes)
+        self.modele.marquer_modifiees(lignes_modifiees(self._brut, self.facture))
 
     def differences(self) -> list[tuple[str, str, str]]:
         if self._depart is None:
             return []
-        return [(nom, self._depart.get(nom, ""), valeur)
-                for nom, valeur in self._etat().items()
-                if valeur != self._depart.get(nom, "")]
+        entete = [(nom, self._depart.get(nom, ""), valeur)
+                  for nom, valeur in self._etat().items()
+                  if valeur != self._depart.get(nom, "")]
+        return entete + ecarts_lignes(self._brut, self.facture)
+
+    def retenir_etat(self) -> None:
+        """Fixe la référence : voilà la facture telle qu'elle est enregistrée.
+
+        À l'ouverture, et après chaque écriture — enregistrement, émission,
+        règlement. Une référence périmée ferait croire à des modifications
+        qui sont déjà dans le fichier.
+        """
+        self._brut = en_dict(self.facture)
+        self._depart = self._etat()
+        self._marquer()
 
     def oublier_modifications(self) -> None:
         """Remet la facture dans l'état où on l'a trouvée.
@@ -738,7 +750,13 @@ class EditeurFacture(QWidget):
 
     def peut_quitter(self) -> bool:
         """Pose la question avant de laisser partir, et agit sur la réponse."""
-        choix = decider_sortie(self, self.differences(), "la facture")
+        ecarts = self.differences()
+        if not ecarts:
+            # Rien à demander, et surtout rien à défaire : remettre la pièce
+            # dans son état d'ouverture effacerait ce qui vient d'y être
+            # enregistré.
+            return True
+        choix = decider_sortie(self, ecarts, "la facture")
         if choix == "rester":
             return False
         if choix == "enregistrer":
@@ -779,6 +797,7 @@ class EditeurFacture(QWidget):
             alerter(self, "Facture vide", "Ajoutez au moins une ligne.")
             return False
         self.depot.enregistrer_facture(self.facture)
+        self.retenir_etat()
         self.numero.setText(self.facture.numero)
         self.enregistre.emit()
         return True
@@ -809,6 +828,7 @@ class EditeurFacture(QWidget):
         self.facture.date_emission = _date.today().isoformat()
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
+        self.retenir_etat()
         self.enregistre.emit()
 
     def marquer_payee(self) -> None:
@@ -833,6 +853,7 @@ class EditeurFacture(QWidget):
             self.date_paiement.setDate(QDate.currentDate())
         self.depot.enregistrer_facture(self.facture)
         self._appliquer_verrou()
+        self.retenir_etat()
         self.enregistre.emit()
         annoncer(self, f"Facture {self.facture.numero} marquée payée")
 
