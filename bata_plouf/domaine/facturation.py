@@ -208,8 +208,6 @@ def _nouvelle_facture(depot, devis: Devis, type_: str) -> Facture:
         objet=devis.objet,
         adresse_chantier=devis.adresse_chantier,
         echeance_jours=societe.delai_paiement_jours,
-        conditions=societe.conditions_paiement,
-        mentions=societe.mentions_facture,
     )
 
 
@@ -379,7 +377,6 @@ def generer_avoir(depot, source: Facture) -> Facture:
         echeance_jours=0,
         remise_globale_pct=source.remise_globale_pct,
         facture_source_id=source.id,
-        mentions=depot.societe.mentions_facture,
     )
     for ligne in source.lignes:
         copie = Ligne(
@@ -404,8 +401,6 @@ def generer_facture_directe(depot, client_id: str = "") -> Facture:
         type="directe",
         client_id=client_id,
         echeance_jours=societe.delai_paiement_jours,
-        conditions=societe.conditions_paiement,
-        mentions=societe.mentions_facture,
     )
 
 

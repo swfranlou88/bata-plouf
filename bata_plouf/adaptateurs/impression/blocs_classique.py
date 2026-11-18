@@ -22,7 +22,7 @@ from decimal import Decimal
 
 from ...domaine import Ligne, date_fr, euros, nombre
 from ...domaine.calculs import taux_reduit
-from .blocs import Contexte, conditions_par_defaut
+from .blocs import Contexte, conditions_par_defaut, mentions_par_defaut
 from .styles import echapper, mm_en_px_css
 
 NOIR = "#000000"
@@ -346,8 +346,7 @@ def _mentions(ctx: Contexte) -> str:
         if texte:
             morceaux.append(echapper(texte))
     if g.afficher_mentions:
-        texte = d.mentions or (s.mentions_facture if ctx.est_facture
-                               else s.mentions_devis)
+        texte = d.mentions or mentions_par_defaut(s, ctx.est_facture)
         if texte:
             morceaux.append(echapper(texte))
     if any(l.taux == 0.0 for l in ctx.totaux.tva):

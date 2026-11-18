@@ -11,6 +11,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 
+from ...domaine.calculs import (
+    conditions_par_defaut, mentions_par_defaut, taux_reduit,
+)
 from ...domaine.facturation import (
     avancement_facture, etat_avancement, generer_acompte, generer_avoir,
     generer_facture_directe, generer_facture_totale, generer_solde,
@@ -674,6 +677,16 @@ class EditeurFacture(QWidget):
                          "obligation comptable. La seule correction possible sera un avoir."):
             return
         from datetime import date as _date
+        # Le bas de page se fige ici, et ici seulement : tant que la facture
+        # est un brouillon elle suit les Paramètres, mais ce qui est parti
+        # chez le client doit se réimprimer à l'identique dans dix ans, même
+        # si les textes ont changé entre-temps.
+        societe = self.depot.societe
+        if not self.facture.conditions:
+            self.facture.conditions = conditions_par_defaut(
+                societe, True, taux_reduit(self.facture))
+        if not self.facture.mentions:
+            self.facture.mentions = mentions_par_defaut(societe, True)
         self.facture.statut = "émise"
         self.facture.date_emission = _date.today().isoformat()
         self.depot.enregistrer_facture(self.facture)

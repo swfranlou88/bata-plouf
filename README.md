@@ -135,6 +135,14 @@ sont d'un **bleu-vert sourd** plutôt que du gris des bordures : sur fond
 sombre, ce gris-là se noyait. La teinte se choisit d'après le thème en cours
 et se recalcule si le système bascule pendant que le logiciel tourne.
 
+Le bas de page n'est plus recopié dans le document à sa création : il se
+choisit à l'impression, d'après le type du document et son taux de TVA —
+devis au taux normal, devis au taux réduit, facture. Un brouillon suit donc
+les Paramètres. À l'émission, en revanche, la facture fige son bas de page :
+ce qui est parti chez le client doit se réimprimer à l'identique, même si
+les textes changent ensuite. Un texte écrit à la main dans le document
+l'emporte toujours.
+
 Tout ce qui supprime porte un **bouton rouge** et demande d'abord : mettre
 une fiche à la corbeille, l'effacer pour de bon, retirer une ligne d'un
 devis ou d'une facture, retirer un matériau de la composition d'un ouvrage,

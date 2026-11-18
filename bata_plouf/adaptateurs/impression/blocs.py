@@ -13,7 +13,9 @@ from ...domaine.gabarit import Gabarit
 from ...domaine import (
     Devis, Facture, Ligne, date_fr, euros, nombre, sous_totaux_sections, taux_tva_txt,
 )
-from ...domaine.calculs import taux_reduit
+from ...domaine.calculs import (
+    conditions_par_defaut, mentions_par_defaut, taux_reduit,
+)
 from .styles import Palette, echapper, espace, mm_en_px_css, palette
 
 
@@ -329,23 +331,6 @@ def _rang_prestation(ctx: Contexte, ligne: Ligne, cols: list[ColonneDevis],
     return f"<tr>{cellules}</tr>"
 
 
-def conditions_par_defaut(societe, est_facture: bool,
-                          reduit: bool = False) -> str:
-    """Le bas de page qui convient au document.
-
-    Trois textes, parce que les trois cas ne disent pas la même chose : une
-    facture réclame un paiement, un devis annonce un acompte, et un devis au
-    taux réduit demande en plus l'attestation signée du client. Chacun est
-    réglable dans les Paramètres ; vide, il retombe sur celui du devis.
-    """
-    if est_facture and societe.conditions_facture:
-        return societe.conditions_facture
-    reduites = getattr(societe, "conditions_devis_reduit", "")
-    if not est_facture and reduit and reduites:
-        return reduites
-    return societe.conditions_paiement
-
-
 def conditions_et_recapitulatif(ctx: Contexte) -> str:
     """Conditions de règlement à gauche, récapitulatif chiffré à droite."""
     g, p, d, t = ctx.gabarit, ctx.palette, ctx.document, ctx.totaux
@@ -358,7 +343,7 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
         if texte:
             gauche.append(f"<b>Conditions de règlement</b><br>{echapper(texte)}")
     if g.afficher_mentions:
-        texte = d.mentions or s.mentions_devis
+        texte = d.mentions or mentions_par_defaut(s, ctx.est_facture)
         if texte:
             gauche.append(f"<b>Mentions</b><br>{echapper(texte)}")
     if any(l.taux == 0.0 for l in t.tva):

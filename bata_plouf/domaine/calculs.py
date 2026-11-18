@@ -102,3 +102,33 @@ def taux_reduit(document) -> bool:
     return any(l.taux_tva in TAUX_REDUITS
                for l in getattr(document, "lignes", []) or []
                if getattr(l, "chiffree", False))
+
+
+# --- quel texte au bas d'un document --------------------------------------
+
+def conditions_par_defaut(societe, est_facture: bool,
+                          reduit: bool = False) -> str:
+    """Le bas de page qui convient au document.
+
+    Trois textes, parce que les trois cas ne disent pas la même chose : une
+    facture réclame un paiement, un devis annonce un acompte, et un devis au
+    taux réduit demande en plus l'attestation signée du client. Chacun est
+    réglable dans les Paramètres ; vide, il retombe sur celui du devis.
+    """
+    if est_facture and societe.conditions_facture:
+        return societe.conditions_facture
+    reduites = getattr(societe, "conditions_devis_reduit", "")
+    if not est_facture and reduit and reduites:
+        return reduites
+    return societe.conditions_paiement
+
+
+def mentions_par_defaut(societe, est_facture: bool) -> str:
+    """Les mentions qui conviennent au document.
+
+    Un devis annonce sa validité et les avenants ; une facture porte les
+    mentions obligatoires du code de commerce. Les deux se règlent dans les
+    Paramètres, et c'est le type du document qui tranche — pas ce qui a été
+    recopié dedans le jour de sa création.
+    """
+    return societe.mentions_facture if est_facture else societe.mentions_devis

@@ -872,11 +872,13 @@ class VueDevis(VueListe):
                     "Créez d'abord un client : un devis est toujours adressé à quelqu'un.")
             return
         societe = self.depot.societe
+        # Ni conditions ni mentions recopiées ici : laissées vides, elles
+        # se choisissent à l'impression d'après le type du document et son
+        # taux de TVA. Les y figer rendait sourd aux Paramètres tout devis
+        # déjà créé — et donnait au devis à 10 % le bas de page du 20 %.
         devis = Devis(
             validite_jours=societe.validite_jours,
             acompte_pct=societe.acompte_defaut_pct,
-            conditions=societe.conditions_paiement,
-            mentions=societe.mentions_devis,
         )
         self.ouvrir_demande.emit(devis)
 
