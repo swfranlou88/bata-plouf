@@ -858,8 +858,9 @@ class EditeurFacture(QWidget):
         self.ferme.emit()
 
     def _retour(self) -> None:
-        if self.facture.modifiable:
-            self.enregistrer()
+        """Revenir à la liste, c'est quitter la pièce : même question."""
+        if not self.peut_quitter():
+            return
         self.ferme.emit()
 
     # --- impression ------------------------------------------------------

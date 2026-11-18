@@ -880,7 +880,13 @@ class EditeurDevis(QWidget):
         self.facturer_demande.emit(self.devis)
 
     def _retour(self) -> None:
-        self.enregistrer()
+        """Revenir à la liste, c'est quitter la pièce : même question.
+
+        Elle s'enregistrait d'office, sans un mot. Celui qui venait d'essayer
+        une remise pour voir n'avait plus de retour en arrière.
+        """
+        if not self.peut_quitter():
+            return
         self.ferme.emit()
 
     # --- impression ------------------------------------------------------

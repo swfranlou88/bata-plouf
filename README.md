@@ -164,8 +164,8 @@ ce qui est parti chez le client doit se réimprimer à l'identique, même si
 les textes changent ensuite. Un texte écrit à la main dans le document
 l'emporte toujours.
 
-Quitter une pièce modifiée — en refermant une fiche **ou en cliquant dans
-le menu** — pose la même question, avec la liste de ce qui a changé :
+Quitter une pièce modifiée — en refermant une fiche, en cliquant dans le
+menu **ou par « Retour à la liste »** — pose la même question, avec la liste de ce qui a changé :
 « Objet : Façade → Façade arrière », « Lignes : 1 ligne, 400,00 € HT →
 2 lignes, 1 350,00 € HT ». Trois réponses : enregistrer et partir, partir
 sans enregistrer, ou rester. Partir sans enregistrer repose vraiment la
