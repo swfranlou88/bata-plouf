@@ -141,6 +141,13 @@ met toutes les lignes chiffrées au même taux d'un seul geste. Les lignes à
 l'autoliquidation, décidée ligne par ligne. Le taux proposé d'emblée est
 celui qui domine déjà le document. Une facture émise ne s'y prête plus.
 
+Une facture ne porte **aucune date d'échéance** : ni champ à remplir, ni
+ligne sur le papier, ni colonne dans la liste. Le délai de paiement se
+convient de vive voix, et les conditions de règlement le disent si besoin.
+Une facture émise depuis plus longtemps que le délai des Paramètres reste
+comptée « en retard » sur l'accueil et dans la liste — c'est ce qui reste à
+encaisser, pas une date annoncée au client.
+
 Les **mentions** se lisent en dernière ligne du tableau, en italique sous ce
 qui vient d'être chiffré, et non plus dans le pavé du bas : c'est là qu'on
 les cherche en relisant une pièce. Elles restent définies dans les
@@ -356,7 +363,7 @@ les trois cas ne disent pas la même chose :
 - **devis au taux réduit** (10 %, 5,5 %) — le même, plus l'attestation signée
   que les travaux de rénovation exigent (articles 279-0 bis et 278-0 bis A du
   CGI) ;
-- **facture** — règlement, échéance, coordonnées bancaires.
+- **facture** — règlement et coordonnées bancaires.
 
 Le document choisit le sien d'après son type et la TVA de ses lignes. Le
 texte écrit sur une pièce précise l'emporte toujours : les devis repris de

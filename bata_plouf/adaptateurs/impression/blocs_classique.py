@@ -160,8 +160,6 @@ def titre_et_client(ctx: Contexte) -> str:
     )
     if ctx.est_facture:
         secondes = [f"Date : {date_fr(d.date_document)}"]
-        if d.date_echeance and d.date_echeance != d.date_document:
-            secondes.append(f"à régler avant le {date_fr(d.date_echeance)}")
     else:
         entete_gauche += f"&nbsp;&nbsp;le {echapper(date_fr(d.date_document))}"
         secondes = [f"valable jusqu'au {date_fr(d.date_validite)}"]

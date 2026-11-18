@@ -201,9 +201,9 @@ def titre_et_client(ctx: Contexte) -> str:
         "<table cellspacing='0' cellpadding='0'>"
         f"<tr><td style='padding:6px 10px 0 0; color:{p.gris};'>Date</td>"
         f"<td style='padding:6px 0 0 0;'><b>{echapper(date_fr(d.date_document))}</b></td></tr>"
-        + (f"<tr><td style='color:{p.gris}; padding-right:10px;'>Échéance</td>"
-           f"<td>le <b>{echapper(date_fr(d.date_echeance))}</b></td></tr>"
-           if ctx.est_facture else
+        # Une facture ne porte plus de date d'échéance : le délai se
+        # convient de vive voix, et l'écrire engageait sans qu'on l'ait voulu.
+        + ("" if ctx.est_facture else
            f"<tr><td style='color:{p.gris}; padding-right:10px;'>Validité</td>"
            f"<td>jusqu'au <b>{echapper(date_fr(d.date_validite))}</b></td></tr>")
         +
@@ -374,8 +374,7 @@ def conditions_et_recapitulatif(ctx: Contexte) -> str:
     if ctx.est_facture:
         gauche.append("<b>Net à payer</b><br>"
                       f"<span style='font-size:{g.taille_police + 2:.1f}pt;'>"
-                      f"<b>{echapper(euros(t.total_ttc))}</b></span>"
-                      f" avant le {echapper(date_fr(d.date_echeance))}")
+                      f"<b>{echapper(euros(t.total_ttc))}</b></span>")
 
     recap = []
     if t.remise:

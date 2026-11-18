@@ -30,7 +30,7 @@ from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, annoncer, barre, bouton,
     bouton_copier_adresse,
-    champ_date, champ_entier, champ_texte, cle_numero, confirmer, discret,
+    champ_date, champ_texte, cle_numero, confirmer, discret,
     informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
     rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
 )
@@ -278,8 +278,6 @@ class EditeurFacture(QWidget):
             self.adresse_chantier, self._client_courant)
         self.objet = champ_texte(facture.objet)
         self.date = champ_date(facture.date_facture)
-        self.echeance = champ_entier(facture.echeance_jours, 365)
-        self.echeance.setSuffix(" jours")
         self.statut = QLabel(facture.statut)
         self.mode_paiement = liste_deroulante(MODES_PAIEMENT, facture.mode_paiement)
         self.date_paiement = champ_date(facture.date_paiement, optionnel=True)
@@ -289,8 +287,6 @@ class EditeurFacture(QWidget):
         self.mode_paiement.currentIndexChanged.connect(self._eclairer_reglement)
         self.date_paiement.dateChanged.connect(self._eclairer_reglement)
 
-        for widget in (self.echeance,):
-            widget.valueChanged.connect(self._recalculer)
         self.date.dateChanged.connect(self._recalculer)
 
         # Comme pour le devis : on passe toutes les lignes au même taux
@@ -369,7 +365,6 @@ class EditeurFacture(QWidget):
 
         droite = QFormLayout()
         droite.addRow("Date", self.date)
-        droite.addRow("Paiement sous", self.echeance)
         droite.addRow("Statut", self.statut)
         droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
         droite.addRow("Mode de règlement", self.mode_paiement)
@@ -533,7 +528,7 @@ class EditeurFacture(QWidget):
         # la facture émise, et la corriger après coup la ferait mentir.
         for widget in (self.client, self.adresse_chantier,
                        self.copier_adresse, self.objet, self.date,
-                       self.echeance, self.notes,
+                       self.notes,
                        self.tva_lignes, self.bouton_tva):
             widget.setEnabled(modifiable)
         self.tableau.setEditTriggers(
@@ -630,7 +625,6 @@ class EditeurFacture(QWidget):
         for l in t.tva:
             rangs.append((f"TVA {taux_tva_txt(l.taux)}", euros(l.montant), False))
         rangs.append(("Net à payer TTC", euros(t.total_ttc), True))
-        rangs.append(("Échéance", date_fr(self.facture.date_echeance), False))
         self.totaux.setText(self._table(rangs))
 
         infos = recapitulatif_marche(self.depot, self.facture)
@@ -664,7 +658,6 @@ class EditeurFacture(QWidget):
         f.objet = self.objet.text().strip()
         f.adresse_chantier = self.adresse_chantier.text().strip()
         f.date_facture = valeur_date(self.date)
-        f.echeance_jours = self.echeance.value()
         f.notes_internes = self.notes.toPlainText().strip()
         f.mode_paiement = self.mode_paiement.currentText()
         f.date_paiement = valeur_date(self.date_paiement)
@@ -854,8 +847,6 @@ class VueFactures(VueListe):
                     alignement=DROITE, cle=lambda f: f.totaux().total_ht),
             Colonne("TTC", lambda f: euros(f.totaux().total_ttc), largeur=110,
                     alignement=DROITE, cle=lambda f: f.totaux().total_ttc),
-            Colonne("Échéance", lambda f: date_fr(f.date_echeance), largeur=92,
-                    alignement=CENTRE, cle=lambda f: f.date_echeance or ""),
             Colonne("Statut", lambda f: ("en retard" if f.en_retard else f.statut),
                     largeur=90, alignement=CENTRE),
         ]
