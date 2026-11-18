@@ -164,6 +164,11 @@ ce qui est parti chez le client doit se réimprimer à l'identique, même si
 les textes changent ensuite. Un texte écrit à la main dans le document
 l'emporte toujours.
 
+Une ligne ajoutée **vient sous les yeux** : le tableau descend jusqu'à elle
+et la sélectionne, qu'elle arrive seule ou par paquet depuis la
+bibliothèque. Sur un devis de trente postes, ce qu'on insérait tombait sous
+le bord du tableau — on croyait n'avoir rien ajouté, et on recommençait.
+
 Les **lignes** se comparent une à une, chacune suivie par son identité :
 « Ligne 1 : Enduit — 10 m2 × 40,00 €, TVA 20 % → TVA 10 % », et les ajouts
 et retraits se disent aussi. Une ligne qui n'est plus d'origine s'écrit en

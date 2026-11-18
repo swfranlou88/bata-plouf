@@ -3,7 +3,10 @@
 from decimal import Decimal
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QTimer, Qt, Signal
+from PySide6.QtCore import (
+    QAbstractTableModel, QItemSelection, QItemSelectionModel, QModelIndex,
+    QTimer, Qt, Signal,
+)
 from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 from PySide6.QtWidgets import (
@@ -699,10 +702,29 @@ class EditeurDevis(QWidget):
         indexes = self.tableau.selectionModel().selectedRows()
         return indexes[0].row() + 1 if indexes else None
 
+    def _montrer_lignes(self, premier: int, dernier: int | None = None) -> None:
+        """Amène les lignes ajoutées sous les yeux, et les sélectionne.
+
+        Sur un devis de trente postes, ce qu'on insère tombe sous le bord du
+        tableau : on croit n'avoir rien ajouté, et on recommence. La vue
+        descend donc jusqu'à la dernière ligne venue.
+        """
+        dernier = premier if dernier is None else dernier
+        index = self.modele.index(dernier, COL_DESIGNATION)
+        # La ligne courante d'abord : setCurrentIndex refait la sélection à
+        # sa façon, et effacerait celle qu'on vient de poser.
+        self.tableau.setCurrentIndex(index)
+        selection = QItemSelection(self.modele.index(premier, 0),
+                                   self.modele.index(dernier, COL_TOTAL))
+        self.tableau.selectionModel().select(
+            selection, QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        self.tableau.scrollTo(index)
+
     def _ajouter(self, ligne: Ligne) -> None:
         rang = self.modele.inserer(ligne, self._position_insertion())
         index = self.modele.index(rang, COL_DESIGNATION)
         self.tableau.setCurrentIndex(index)
+        self.tableau.scrollTo(index)
         self.tableau.edit(index)
 
     def ajouter_prestation(self) -> None:
@@ -719,14 +741,18 @@ class EditeurDevis(QWidget):
         if dialogue.exec() != QDialog.DialogCode.Accepted:
             return
         position = self._position_insertion()
+        premier = dernier = None
         for article in dialogue.articles():
             ligne = Ligne(
                 designation=article.designation, detail=article.detail,
                 unite=article.unite, prix_unitaire=article.prix_vente,
                 taux_tva=article.taux_tva, article_id=article.id, quantite=1.0,
             )
-            position = self.modele.inserer(ligne, position)
-            position += 1
+            dernier = self.modele.inserer(ligne, position)
+            premier = dernier if premier is None else premier
+            position = dernier + 1
+        if dernier is not None:
+            self._montrer_lignes(premier, dernier)
 
     def appliquer_tva(self) -> None:
         """Met toutes les lignes chiffrées au taux choisi, sauf celles à 0 %."""

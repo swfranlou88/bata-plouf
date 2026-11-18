@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt, Signal
+from PySide6.QtCore import (
+    QItemSelection, QItemSelectionModel, QTimer, Qt, Signal,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
     QFileDialog, QFormLayout, QGroupBox, QHBoxLayout, QHeaderView, QLabel,
@@ -573,6 +575,7 @@ class EditeurFacture(QWidget):
         rang = self.modele.inserer(Ligne(taux_tva=self.depot.societe.taux_tva_defaut))
         index = self.modele.index(rang, COL_DESIGNATION)
         self.tableau.setCurrentIndex(index)
+        self.tableau.scrollTo(index)
         self.tableau.edit(index)
 
     def inserer_articles(self) -> None:
@@ -589,12 +592,30 @@ class EditeurFacture(QWidget):
         if dialogue.exec() != QDialog.DialogCode.Accepted:
             return
         rang = None
+        premier = dernier = None
         for article in dialogue.articles():
-            rang = self.modele.inserer(Ligne(
+            dernier = self.modele.inserer(Ligne(
                 designation=article.designation, detail=article.detail,
                 unite=article.unite, prix_unitaire=article.prix_vente,
                 taux_tva=article.taux_tva, article_id=article.id,
-                quantite=1.0), rang) + 1
+                quantite=1.0), rang)
+            premier = dernier if premier is None else premier
+            rang = dernier + 1
+        if dernier is not None:
+            self._montrer_lignes(premier, dernier)
+
+    def _montrer_lignes(self, premier: int, dernier: int | None = None) -> None:
+        """Amène les lignes ajoutées sous les yeux, et les sélectionne."""
+        dernier = premier if dernier is None else dernier
+        index = self.modele.index(dernier, COL_DESIGNATION)
+        # La ligne courante d'abord : setCurrentIndex refait la sélection à
+        # sa façon, et effacerait celle qu'on vient de poser.
+        self.tableau.setCurrentIndex(index)
+        selection = QItemSelection(self.modele.index(premier, 0),
+                                   self.modele.index(dernier, COL_TOTAL))
+        self.tableau.selectionModel().select(
+            selection, QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        self.tableau.scrollTo(index)
 
     def appliquer_tva(self) -> None:
         """Met toutes les lignes chiffrées au taux choisi, sauf celles à 0 %."""
