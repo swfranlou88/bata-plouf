@@ -247,8 +247,11 @@ et TTC.
 
 ## Devis et factures
 
-Dans une fiche, l'intitulé d'un champ modifié passe en **orange** : on voit
-d'un coup d'œil ce qu'on a touché, et revenir à la valeur d'origine l'éteint.
+L'intitulé d'un champ modifié passe en **orange** : on voit d'un coup d'œil
+ce qu'on a touché, et revenir à la valeur d'origine l'éteint. Partout de la
+même façon — dans la fiche d'un client ou d'un article comme dans l'écran
+d'un devis ou d'une facture, où le cadre « Notes internes » se teinte aussi.
+Abandonner les modifications rend aux intitulés leur couleur.
 
 Dans une fiche, **Entrée ne ferme rien** : on tape un prix, on confirme le
 champ, la fiche reste ouverte — aucun bouton n'y est « par défaut ». Et

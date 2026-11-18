@@ -12,9 +12,10 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication, QCalendarWidget, QComboBox, QCompleter, QDateEdit,
-    QDoubleSpinBox, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QSpinBox, QStyle, QStyledItemDelegate,
-    QStyleOptionViewItem, QToolTip, QVBoxLayout, QWidget,
+    QDoubleSpinBox, QFormLayout, QGraphicsOpacityEffect, QGroupBox,
+    QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox,
+    QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolTip, QVBoxLayout,
+    QWidget,
 )
 
 from ...domaine import euros
@@ -931,6 +932,58 @@ def annoncer(parent, message: str, duree: int = 2600) -> None:
     if annonce is None or annonce.parentWidget() is not fenetre:
         annonce = Annonce(fenetre)
     annonce.montrer(message, duree)
+
+
+def ecouter_changements(widget, rappel) -> None:
+    """Rappelle « rappel » dès que ce widget, ou l'un des siens, change.
+
+    Chaque sorte de champ annonce ses changements à sa façon : on branche ce
+    qui existe plutôt que de tenir une liste par type de widget, qu'il
+    faudrait compléter à chaque nouvel écran.
+    """
+    for nom in ("textChanged", "currentTextChanged", "valueChanged", "toggled"):
+        signal = getattr(widget, nom, None)
+        if signal is not None and hasattr(signal, "connect"):
+            signal.connect(lambda *_: rappel())
+    modele = getattr(widget, "model", None)
+    modele = modele() if callable(modele) else None
+    if modele is not None:
+        for nom in ("dataChanged", "modelReset", "rowsInserted", "rowsRemoved"):
+            signal = getattr(modele, nom, None)
+            if signal is not None:
+                signal.connect(lambda *_: rappel())
+    if isinstance(widget, QWidget) and not isinstance(widget, QLabel):
+        for enfant in widget.findChildren(
+                QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly):
+            if not isinstance(enfant, QLabel):
+                ecouter_changements(enfant, rappel)
+
+
+def marquer_modifications(ecarts, formulaires=(), groupes=()) -> None:
+    """Met en orange l'intitulé de ce qui n'est plus d'origine.
+
+    Les noms des écarts sont ceux des intitulés à l'écran : le même mot des
+    deux côtés, donc le rapprochement se fait tout seul et aucune liste de
+    correspondance n'est à tenir.
+    """
+    noms = {nom for nom, _, _ in ecarts}
+    teinte = teinte_modifiee()
+    for formulaire in formulaires:
+        for rang in range(formulaire.rowCount()):
+            intitule = formulaire.itemAt(rang, QFormLayout.ItemRole.LabelRole)
+            etiquette = intitule.widget() if intitule is not None else None
+            if not isinstance(etiquette, QLabel):
+                continue
+            nom = etiquette.text().strip()
+            if not nom:
+                continue
+            etiquette.setStyleSheet(f"color: {teinte}; font-weight: bold;"
+                                    if nom in noms else "")
+    for groupe in groupes:
+        change = groupe.title().strip() in noms
+        groupe.setStyleSheet(
+            f"QGroupBox::title {{ color: {teinte}; font-weight: bold; }}"
+            if change else "")
 
 
 def decider_sortie(parent, ecarts, quoi: str = "la fiche") -> str:

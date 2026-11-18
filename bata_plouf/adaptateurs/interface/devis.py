@@ -23,8 +23,8 @@ from .commun import (
     activer_le_tri, alerter, amorce, barre, bouton, bouton_copier_adresse,
     champ_date, champ_entier, champ_pourcent, champ_texte, cle_numero,
     poser_date,
-    annoncer, confirmer, decider_sortie, discret, etiquette_client,
-    infobulles_si_tronque,
+    annoncer, confirmer, decider_sortie, discret, ecouter_changements,
+    etiquette_client, infobulles_si_tronque, marquer_modifications,
     liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .dialogues import DialogueArticle
@@ -520,6 +520,7 @@ class EditeurDevis(QWidget):
         # remplie — avant, le sélecteur est vide et se dirait modifié.
         self._brut = en_dict(devis)
         self._depart = self._etat()
+        self._veiller()
 
     # --- montage ---------------------------------------------------------
 
@@ -538,6 +539,8 @@ class EditeurDevis(QWidget):
         droite.addRow("Remise globale", self.remise)
         droite.addRow("Acompte", self.acompte)
         droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
+
+        self._formulaires = (entete, droite)
 
         cadre = QWidget()
         colonnes = QHBoxLayout(cadre)
@@ -566,6 +569,7 @@ class EditeurDevis(QWidget):
         disposition_bas = QHBoxLayout(bas)
         disposition_bas.setContentsMargins(0, 0, 0, 0)
         groupe_notes = QGroupBox("Notes internes")
+        self._groupes = (groupe_notes,)
         notes_layout = QVBoxLayout(groupe_notes)
         notes_layout.addWidget(self.notes)
         groupe_totaux = QGroupBox("Récapitulatif")
@@ -734,7 +738,7 @@ class EditeurDevis(QWidget):
         return {
             "Client": self.client.currentText(),
             "Objet": d.objet,
-            "Adresse du chantier": d.adresse_chantier,
+            "Adresse chantier": d.adresse_chantier,
             "Date": date_fr(d.date_devis),
             "Validité": f"{d.validite_jours} jours",
             "Statut": d.statut,
@@ -744,6 +748,23 @@ class EditeurDevis(QWidget):
             "Lignes": f"{len(d.lignes)} ligne(s), "
                       f"{euros(d.totaux().total_ht)} HT",
         }
+
+    def _veiller(self) -> None:
+        """Écoute tout ce qui peut changer, pour teinter au fil de la saisie."""
+        for formulaire in self._formulaires:
+            for rang in range(formulaire.rowCount()):
+                champ = formulaire.itemAt(rang, QFormLayout.ItemRole.FieldRole)
+                if champ is not None and champ.widget() is not None:
+                    ecouter_changements(champ.widget(), self._marquer)
+        ecouter_changements(self.notes, self._marquer)
+        ecouter_changements(self.tableau, self._marquer)
+
+    def _marquer(self) -> None:
+        """Met en orange l'intitulé de ce qui n'est plus d'origine."""
+        if self._depart is None:
+            return
+        marquer_modifications(self.differences(), self._formulaires,
+                              self._groupes)
 
     def differences(self) -> list[tuple[str, str, str]]:
         if self._depart is None:
@@ -768,23 +789,29 @@ class EditeurDevis(QWidget):
     def _reposer_les_champs(self) -> None:
         """Réaffiche le devis tel qu'il est en mémoire.
 
-        L'ordre compte : les champs d'abord, le tableau ensuite. Reposer le
-        tableau relance le recalcul, qui relit les champs — s'ils portaient
-        encore la saisie abandonnée, elle reviendrait par cette porte.
+        Les valeurs sont lues d'abord, posées ensuite : remplir un champ
+        réveille le recalcul, qui relit tous les autres et les réécrit dans
+        le devis. Lus au fil de l'eau, les derniers champs se seraient fait
+        rendre la saisie qu'on vient justement d'abandonner.
         """
         d = self.devis
-        index = self.client.findData(d.client_id)
+        client, objet, adresse = d.client_id, d.objet, d.adresse_chantier
+        date_, validite, statut = d.date_devis, d.validite_jours, d.statut
+        remise, acompte, notes = (d.remise_globale_pct, d.acompte_pct,
+                                  d.notes_internes)
+        index = self.client.findData(client)
         if index >= 0:
             self.client.setCurrentIndex(index)
-        self.objet.setText(d.objet)
-        self.adresse_chantier.setText(d.adresse_chantier)
-        poser_date(self.date, d.date_devis)
-        self.validite.setValue(d.validite_jours)
-        self.statut.setCurrentText(d.statut)
-        self.remise.setValue(d.remise_globale_pct)
-        self.acompte.setValue(d.acompte_pct)
-        self.notes.setPlainText(d.notes_internes)
+        self.objet.setText(objet)
+        self.adresse_chantier.setText(adresse)
+        poser_date(self.date, date_)
+        self.validite.setValue(validite)
+        self.statut.setCurrentText(statut)
+        self.remise.setValue(remise)
+        self.acompte.setValue(acompte)
+        self.notes.setPlainText(notes)
         self.modele.definir(d)
+        self._marquer()
 
     def peut_quitter(self) -> bool:
         """Pose la question avant de laisser partir, et agit sur la réponse."""

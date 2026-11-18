@@ -29,7 +29,8 @@ from ...domaine import (
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, annoncer, barre, bouton,
-    bouton_copier_adresse, decider_sortie,
+    bouton_copier_adresse, decider_sortie, ecouter_changements,
+    marquer_modifications,
     champ_date, champ_texte, cle_numero, confirmer, discret, poser_date,
     informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
     rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
@@ -354,6 +355,7 @@ class EditeurFacture(QWidget):
         # chose a bougé. Pris en dernier, la liste des clients remplie.
         self._brut = en_dict(facture)
         self._depart = self._etat()
+        self._veiller()
 
     # --- montage ---------------------------------------------------------
 
@@ -373,6 +375,7 @@ class EditeurFacture(QWidget):
         droite.addRow("TVA des lignes", barre(self.tva_lignes, self.bouton_tva))
         droite.addRow("Mode de règlement", self.mode_paiement)
         droite.addRow("Payée le", self.date_paiement)
+        self._formulaires = (gauche, droite)
 
         cadre = QWidget()
         colonnes = QHBoxLayout(cadre)
@@ -396,6 +399,7 @@ class EditeurFacture(QWidget):
         disposition_bas = QHBoxLayout(bas)
         disposition_bas.setContentsMargins(0, 0, 0, 0)
         groupe_notes = QGroupBox("Notes internes")
+        self._groupes = (groupe_notes,)
         QVBoxLayout(groupe_notes).addWidget(self.notes)
         self.groupe_marche = QGroupBox("Rappel du marché")
         QVBoxLayout(self.groupe_marche).addWidget(self.marche)
@@ -665,13 +669,30 @@ class EditeurFacture(QWidget):
             etat.update({
                 "Client": self.client.currentText(),
                 "Objet": f.objet,
-                "Adresse du chantier": f.adresse_chantier,
+                "Adresse chantier": f.adresse_chantier,
                 "Date": date_fr(f.date_facture),
                 "Notes internes": f.notes_internes,
                 "Lignes": f"{len(f.lignes)} ligne(s), "
                           f"{euros(f.totaux().total_ht)} HT",
             })
         return etat
+
+    def _veiller(self) -> None:
+        """Écoute tout ce qui peut changer, pour teinter au fil de la saisie."""
+        for formulaire in self._formulaires:
+            for rang in range(formulaire.rowCount()):
+                champ = formulaire.itemAt(rang, QFormLayout.ItemRole.FieldRole)
+                if champ is not None and champ.widget() is not None:
+                    ecouter_changements(champ.widget(), self._marquer)
+        ecouter_changements(self.notes, self._marquer)
+        ecouter_changements(self.tableau, self._marquer)
+
+    def _marquer(self) -> None:
+        """Met en orange l'intitulé de ce qui n'est plus d'origine."""
+        if self._depart is None:
+            return
+        marquer_modifications(self.differences(), self._formulaires,
+                              self._groupes)
 
     def differences(self) -> list[tuple[str, str, str]]:
         if self._depart is None:
@@ -694,21 +715,26 @@ class EditeurFacture(QWidget):
     def _reposer_les_champs(self) -> None:
         """Réaffiche la facture telle qu'elle est en mémoire.
 
-        Les champs d'abord, le tableau ensuite : reposer le tableau relance
-        le recalcul, qui relit les champs.
+        Les valeurs sont lues d'abord, posées ensuite : remplir un champ
+        réveille le recalcul, qui relit tous les autres et les réécrit dans
+        la pièce.
         """
         f = self.facture
-        index = self.client.findData(f.client_id)
+        client, objet, adresse = f.client_id, f.objet, f.adresse_chantier
+        date_, notes = f.date_facture, f.notes_internes
+        mode, regle = f.mode_paiement, f.date_paiement
+        index = self.client.findData(client)
         if index >= 0:
             self.client.setCurrentIndex(index)
-        self.objet.setText(f.objet)
-        self.adresse_chantier.setText(f.adresse_chantier)
-        poser_date(self.date, f.date_facture)
-        self.notes.setPlainText(f.notes_internes)
-        self.mode_paiement.setCurrentText(f.mode_paiement)
-        poser_date(self.date_paiement, f.date_paiement)
+        self.objet.setText(objet)
+        self.adresse_chantier.setText(adresse)
+        poser_date(self.date, date_)
+        self.notes.setPlainText(notes)
+        self.mode_paiement.setCurrentText(mode)
+        poser_date(self.date_paiement, regle)
         self.modele.definir(f)
         self._appliquer_verrou()
+        self._marquer()
 
     def peut_quitter(self) -> bool:
         """Pose la question avant de laisser partir, et agit sur la réponse."""
