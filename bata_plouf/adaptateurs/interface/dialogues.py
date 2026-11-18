@@ -3,7 +3,7 @@
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QAbstractSpinBox, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
+    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QPlainTextEdit, QTableView, QVBoxLayout, QWidget,
 )
 
@@ -12,10 +12,10 @@ from ...domaine import (
     TAUX_TVA, TYPES_ARTICLE, UNITES, euros, nombre,
 )
 from ...domaine.chantier import est_du_temps
-from ..impression.styles import echapper
 from .commun import (
     CENTRE, DROITE, GAUCHE, barre, bouton, champ_date, champ_euros,
-    champ_texte, confirmer, discret, etiquette_client, infobulles_si_tronque,
+    champ_texte, confirmer, decider_sortie, discret, etiquette_client,
+    infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, teinte_modifiee, valeur_date,
 )
 
@@ -283,51 +283,8 @@ class DialogueBase(QDialog):
     # --- sortie surveillée ------------------------------------------------
 
     def _decider_sortie(self) -> str:
-        """« enregistrer », « quitter » ou « rester », selon ce qu'on répond."""
-        ecarts = self.differences()
-        if not ecarts:
-            return "quitter"
-
-        def court(valeur: str) -> str:
-            # Une désignation d'ouvrage fait cent caractères : on en montre
-            # assez pour reconnaître ce qui change, pas la ligne entière.
-            valeur = valeur or "(vide)"
-            return valeur if len(valeur) <= 58 else valeur[:55] + "…"
-
-        # Une ligne vide entre chaque écart : collés, ils se lisent comme un
-        # paragraphe, et l'œil ne retrouve plus où commence le suivant.
-        lignes = "".join(
-            f"<tr><td style='padding-right:10px; padding-bottom:9px;'>"
-            f"<b>{echapper(nom)}</b></td>"
-            f"<td style='padding-bottom:9px;'>{echapper(court(avant))} &rarr; "
-            f"<b>{echapper(court(apres))}</b></td></tr>"
-            for nom, avant, apres in ecarts[:10])
-        reste = ("" if len(ecarts) <= 10 else
-                 f"<p>… et {len(ecarts) - 10} autre(s).</p>")
-
-        boite = QMessageBox(self)
-        boite.setWindowTitle("Modifications non enregistrées")
-        boite.setIcon(QMessageBox.Icon.Warning)
-        boite.setTextFormat(Qt.TextFormat.RichText)
-        boite.setText("Les éléments suivants ont été modifiés :")
-        boite.setInformativeText(f"<table cellspacing='0'>{lignes}</table>{reste}")
-        garder = boite.addButton("Enregistrer et quitter",
-                                 QMessageBox.ButtonRole.AcceptRole)
-        jeter = boite.addButton("Quitter sans enregistrer",
-                                QMessageBox.ButtonRole.DestructiveRole)
-        rester = boite.addButton("Rester sur la fiche",
-                                 QMessageBox.ButtonRole.RejectRole)
-        # Revenir à la fiche est le choix le moins coûteux : c'est lui qu'on
-        # propose par défaut, et celui qu'Échap déclenche.
-        boite.setDefaultButton(rester)
-        boite.setEscapeButton(rester)
-        boite.exec()
-        clique = boite.clickedButton()
-        if clique is garder:
-            return "enregistrer"
-        if clique is jeter:
-            return "quitter"
-        return "rester"
+        """La question commune, posée sur les écarts de cette fiche."""
+        return decider_sortie(self, self.differences(), "la fiche")
 
     def reject(self) -> None:
         choix = self._decider_sortie()

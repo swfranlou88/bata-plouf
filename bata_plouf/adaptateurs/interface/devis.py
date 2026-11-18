@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
 )
 
 from ...domaine import (
-    Devis, Ligne, STATUTS_DEVIS, TAUX_TVA, UNITES, date_fr, euros, nombre,
-    nouvel_id, sous_totaux_sections, taux_tva_txt,
+    Devis, Ligne, STATUTS_DEVIS, TAUX_TVA, UNITES, date_fr, depuis_dict,
+    en_dict, euros, nombre, nouvel_id, sous_totaux_sections, taux_tva_txt,
 )
 from ..impression import RenduDocument
 from ...domaine.calculs import appliquer_taux, taux_dominant
@@ -22,7 +22,9 @@ from .commun import (
     CENTRE, Colonne, DROITE, GAUCHE, DelegueAmorce, ModeleListe,
     activer_le_tri, alerter, amorce, barre, bouton, bouton_copier_adresse,
     champ_date, champ_entier, champ_pourcent, champ_texte, cle_numero,
-    annoncer, confirmer, discret, etiquette_client, infobulles_si_tronque,
+    poser_date,
+    annoncer, confirmer, decider_sortie, discret, etiquette_client,
+    infobulles_si_tronque,
     liste_deroulante, rendre_cherchable, titre, valeur_date,
 )
 from .dialogues import DialogueArticle
@@ -513,6 +515,11 @@ class EditeurDevis(QWidget):
         self._construire()
         self._remplir_clients()
         self._recalculer()
+        # L'état de référence : ce à quoi on comparera pour savoir si quelque
+        # chose a bougé. Pris en dernier, une fois la liste des clients
+        # remplie — avant, le sélecteur est vide et se dirait modifié.
+        self._brut = en_dict(devis)
+        self._depart = self._etat()
 
     # --- montage ---------------------------------------------------------
 
@@ -712,6 +719,82 @@ class EditeurDevis(QWidget):
         self.numero.setText(self.devis.numero or "attribué à l'enregistrement")
 
     # --- enregistrement --------------------------------------------------
+
+    # --- ce qui a changé depuis l'ouverture ------------------------------
+
+    def _etat(self) -> dict[str, str]:
+        """Le devis tel qu'il est à l'écran, en clair.
+
+        Les lignes ne sont pas détaillées une à une : sur un devis de trente
+        postes, la liste des écarts serait illisible. Leur nombre et leur
+        total disent l'essentiel — qu'on a touché au contenu, et de combien.
+        """
+        self._collecter(sans_numero=True)
+        d = self.devis
+        return {
+            "Client": self.client.currentText(),
+            "Objet": d.objet,
+            "Adresse du chantier": d.adresse_chantier,
+            "Date": date_fr(d.date_devis),
+            "Validité": f"{d.validite_jours} jours",
+            "Statut": d.statut,
+            "Remise globale": f"{nombre(d.remise_globale_pct)} %",
+            "Acompte": f"{nombre(d.acompte_pct)} %",
+            "Notes internes": d.notes_internes,
+            "Lignes": f"{len(d.lignes)} ligne(s), "
+                      f"{euros(d.totaux().total_ht)} HT",
+        }
+
+    def differences(self) -> list[tuple[str, str, str]]:
+        if self._depart is None:
+            return []
+        return [(nom, self._depart.get(nom, ""), valeur)
+                for nom, valeur in self._etat().items()
+                if valeur != self._depart.get(nom, "")]
+
+    def oublier_modifications(self) -> None:
+        """Remet le devis dans l'état où on l'a trouvé.
+
+        Le dépôt garde les fiches en mémoire : c'est le même objet qui est
+        à l'écran et dans la liste. Quitter sans enregistrer doit donc le
+        reposer tel quel, sinon la liste afficherait des valeurs que le
+        fichier ne porte pas.
+        """
+        if self._brut is None:
+            return
+        self.devis.__dict__.update(depuis_dict(Devis, self._brut).__dict__)
+        self._reposer_les_champs()
+
+    def _reposer_les_champs(self) -> None:
+        """Réaffiche le devis tel qu'il est en mémoire.
+
+        L'ordre compte : les champs d'abord, le tableau ensuite. Reposer le
+        tableau relance le recalcul, qui relit les champs — s'ils portaient
+        encore la saisie abandonnée, elle reviendrait par cette porte.
+        """
+        d = self.devis
+        index = self.client.findData(d.client_id)
+        if index >= 0:
+            self.client.setCurrentIndex(index)
+        self.objet.setText(d.objet)
+        self.adresse_chantier.setText(d.adresse_chantier)
+        poser_date(self.date, d.date_devis)
+        self.validite.setValue(d.validite_jours)
+        self.statut.setCurrentText(d.statut)
+        self.remise.setValue(d.remise_globale_pct)
+        self.acompte.setValue(d.acompte_pct)
+        self.notes.setPlainText(d.notes_internes)
+        self.modele.definir(d)
+
+    def peut_quitter(self) -> bool:
+        """Pose la question avant de laisser partir, et agit sur la réponse."""
+        choix = decider_sortie(self, self.differences(), "le devis")
+        if choix == "rester":
+            return False
+        if choix == "enregistrer":
+            return self.enregistrer()
+        self.oublier_modifications()
+        return True
 
     def _collecter(self, sans_numero: bool = False) -> None:
         d = self.devis

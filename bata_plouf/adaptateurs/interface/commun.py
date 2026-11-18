@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...domaine import euros
+from ..impression.styles import echapper
 
 GAUCHE = int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 DROITE = int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -932,6 +933,59 @@ def annoncer(parent, message: str, duree: int = 2600) -> None:
     annonce.montrer(message, duree)
 
 
+def decider_sortie(parent, ecarts, quoi: str = "la fiche") -> str:
+    """« enregistrer », « quitter » ou « rester », selon ce qu'on répond.
+
+    La même question partout où l'on s'apprête à perdre une saisie : en
+    fermant une fiche, en cliquant dans le menu. Elle ne se contente pas de
+    prévenir, elle dit ce qui a changé — un nom, un prix, trois lignes de
+    plus — parce qu'on ne se souvient pas toujours de ce qu'on a touché.
+    """
+    if not ecarts:
+        return "quitter"
+
+    def court(valeur: str) -> str:
+        # Une désignation d'ouvrage fait cent caractères : on en montre
+        # assez pour reconnaître ce qui change, pas la ligne entière.
+        valeur = valeur or "(vide)"
+        return valeur if len(valeur) <= 58 else valeur[:55] + "…"
+
+    # Une ligne vide entre chaque écart : collés, ils se lisent comme un
+    # paragraphe, et l'œil ne retrouve plus où commence le suivant.
+    lignes = "".join(
+        f"<tr><td style='padding-right:10px; padding-bottom:9px;'>"
+        f"<b>{echapper(nom)}</b></td>"
+        f"<td style='padding-bottom:9px;'>{echapper(court(avant))} &rarr; "
+        f"<b>{echapper(court(apres))}</b></td></tr>"
+        for nom, avant, apres in ecarts[:10])
+    reste = ("" if len(ecarts) <= 10 else
+             f"<p>… et {len(ecarts) - 10} autre(s).</p>")
+
+    boite = QMessageBox(parent)
+    boite.setWindowTitle("Modifications non enregistrées")
+    boite.setIcon(QMessageBox.Icon.Warning)
+    boite.setTextFormat(Qt.TextFormat.RichText)
+    boite.setText("Les éléments suivants ont été modifiés :")
+    boite.setInformativeText(f"<table cellspacing='0'>{lignes}</table>{reste}")
+    garder = boite.addButton("Enregistrer et quitter",
+                             QMessageBox.ButtonRole.AcceptRole)
+    jeter = boite.addButton("Quitter sans enregistrer",
+                            QMessageBox.ButtonRole.DestructiveRole)
+    rester = boite.addButton(f"Rester sur {quoi}",
+                             QMessageBox.ButtonRole.RejectRole)
+    # Revenir est le choix le moins coûteux : c'est lui qu'on propose par
+    # défaut, et celui qu'Échap déclenche.
+    boite.setDefaultButton(rester)
+    boite.setEscapeButton(rester)
+    boite.exec()
+    clique = boite.clickedButton()
+    if clique is garder:
+        return "enregistrer"
+    if clique is jeter:
+        return "quitter"
+    return "rester"
+
+
 def informer(parent, titre_: str, message: str) -> None:
     QMessageBox.information(parent, titre_, message)
 
@@ -988,6 +1042,12 @@ class ChampDate(QDateEdit):
 
 def champ_date(valeur_iso: str = "", optionnel: bool = False) -> ChampDate:
     return ChampDate(valeur_iso, optionnel)
+
+
+def poser_date(boite, valeur_iso: str) -> None:
+    """Réécrit une date dans son champ ; vide, il retombe sur « — »."""
+    boite.setDate(QDate.fromString(valeur_iso[:10], "yyyy-MM-dd")
+                  if valeur_iso else VIDE)
 
 
 def valeur_date(boite) -> str:

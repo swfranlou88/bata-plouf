@@ -24,13 +24,13 @@ from ...domaine.facturation import (
 from ..impression import RenduDocument
 from ...domaine import (
     Facture, LIBELLES_FACTURE, MODES_PAIEMENT, STATUTS_FACTURE, TAUX_TVA, UNITES,
-    date_fr, euros, nombre, taux_tva_txt,
+    date_fr, depuis_dict, en_dict, euros, nombre, taux_tva_txt,
 )
 from ..depot_fichiers import ErreurReference
 from .commun import (
     CENTRE, Colonne, DROITE, alerter, annoncer, barre, bouton,
-    bouton_copier_adresse,
-    champ_date, champ_texte, cle_numero, confirmer, discret,
+    bouton_copier_adresse, decider_sortie,
+    champ_date, champ_texte, cle_numero, confirmer, discret, poser_date,
     informer, etiquette_client, infobulles_si_tronque, liste_deroulante,
     rendre_cherchable, teinte_attente, teinte_defaire, titre, valeur_date,
 )
@@ -350,6 +350,10 @@ class EditeurFacture(QWidget):
         self._remplir_clients()
         self._appliquer_verrou()
         self._recalculer()
+        # L'état de référence : ce à quoi on comparera pour savoir si quelque
+        # chose a bougé. Pris en dernier, la liste des clients remplie.
+        self._brut = en_dict(facture)
+        self._depart = self._etat()
 
     # --- montage ---------------------------------------------------------
 
@@ -646,6 +650,75 @@ class EditeurFacture(QWidget):
         return f"<table width='100%'>{corps}</table>"
 
     # --- enregistrement --------------------------------------------------
+
+    # --- ce qui a changé depuis l'ouverture ------------------------------
+
+    def _etat(self) -> dict[str, str]:
+        """La facture telle qu'elle est à l'écran, en clair."""
+        self._collecter()
+        f = self.facture
+        etat = {
+            "Mode de règlement": f.mode_paiement,
+            "Payée le": date_fr(f.date_paiement),
+        }
+        if f.modifiable:
+            etat.update({
+                "Client": self.client.currentText(),
+                "Objet": f.objet,
+                "Adresse du chantier": f.adresse_chantier,
+                "Date": date_fr(f.date_facture),
+                "Notes internes": f.notes_internes,
+                "Lignes": f"{len(f.lignes)} ligne(s), "
+                          f"{euros(f.totaux().total_ht)} HT",
+            })
+        return etat
+
+    def differences(self) -> list[tuple[str, str, str]]:
+        if self._depart is None:
+            return []
+        return [(nom, self._depart.get(nom, ""), valeur)
+                for nom, valeur in self._etat().items()
+                if valeur != self._depart.get(nom, "")]
+
+    def oublier_modifications(self) -> None:
+        """Remet la facture dans l'état où on l'a trouvée.
+
+        Le dépôt garde les pièces en mémoire : c'est le même objet qui est à
+        l'écran et dans la liste.
+        """
+        if self._brut is None:
+            return
+        self.facture.__dict__.update(depuis_dict(Facture, self._brut).__dict__)
+        self._reposer_les_champs()
+
+    def _reposer_les_champs(self) -> None:
+        """Réaffiche la facture telle qu'elle est en mémoire.
+
+        Les champs d'abord, le tableau ensuite : reposer le tableau relance
+        le recalcul, qui relit les champs.
+        """
+        f = self.facture
+        index = self.client.findData(f.client_id)
+        if index >= 0:
+            self.client.setCurrentIndex(index)
+        self.objet.setText(f.objet)
+        self.adresse_chantier.setText(f.adresse_chantier)
+        poser_date(self.date, f.date_facture)
+        self.notes.setPlainText(f.notes_internes)
+        self.mode_paiement.setCurrentText(f.mode_paiement)
+        poser_date(self.date_paiement, f.date_paiement)
+        self.modele.definir(f)
+        self._appliquer_verrou()
+
+    def peut_quitter(self) -> bool:
+        """Pose la question avant de laisser partir, et agit sur la réponse."""
+        choix = decider_sortie(self, self.differences(), "la facture")
+        if choix == "rester":
+            return False
+        if choix == "enregistrer":
+            return self.enregistrer()
+        self.oublier_modifications()
+        return True
 
     def _collecter(self) -> None:
         if not self.facture.modifiable:

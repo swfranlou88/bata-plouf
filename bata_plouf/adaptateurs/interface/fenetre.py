@@ -38,6 +38,9 @@ class FenetrePrincipale(QMainWindow):
         super().__init__()
         self.depot = depot
         self.editeur: EditeurDevis | None = None
+        # La rubrique où le menu est posé : on y revient si l'écran ouvert
+        # refuse de se laisser quitter.
+        self._rang_courant = 0
 
         self.setWindowTitle("Bata-plouf")
         self.resize(1280, 820)
@@ -244,12 +247,34 @@ class FenetrePrincipale(QMainWindow):
 
     def _changer_rubrique(self, rang: int) -> None:
         if self.editeur is not None:
+            # Cliquer dans le menu, c'est quitter la pièce en cours : la
+            # même question qu'en refermant une fiche, et la même liste des
+            # modifications. Sans cela, une saisie se perdait d'un clic.
+            if not self._editeur_accepte_de_partir():
+                self._revenir_au_menu()
+                return
             self._fermer_editeur()
         if 0 <= rang < self.pages.count():
             self.pages.setCurrentIndex(rang)
+            self._rang_courant = rang
             vue = self.pages.widget(rang)
             if hasattr(vue, "rafraichir"):
                 vue.rafraichir()
+
+    def _editeur_accepte_de_partir(self) -> bool:
+        """L'écran ouvert laisse-t-il partir ? Lui seul peut le dire."""
+        peut = getattr(self.editeur, "peut_quitter", None)
+        return peut() if callable(peut) else True
+
+    def _revenir_au_menu(self) -> None:
+        """Repose la sélection sur la rubrique d'où l'on vient.
+
+        Sans couper le signal, ce retour en arrière rappellerait aussitôt
+        _changer_rubrique, et la question se poserait deux fois.
+        """
+        self.navigation.blockSignals(True)
+        self.navigation.setCurrentRow(getattr(self, "_rang_courant", 0))
+        self.navigation.blockSignals(False)
 
     def ouvrir_devis(self, devis) -> None:
         self._ouvrir(EditeurDevis(self.depot, devis), "devis")
