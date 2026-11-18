@@ -1,5 +1,7 @@
 """Écran d'accueil : les six catégories, et l'essentiel en un coup d'œil."""
 
+from datetime import date
+
 from PySide6.QtCore import QDate, QLocale, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
@@ -18,6 +20,37 @@ RUBRIQUES_ACCUEIL = [
     ("factures", "Factures", "Acomptes, situations, soldes"),
     ("chantiers", "Chantiers", "Heures et fournitures à prévoir"),
 ]
+
+# Le 18 novembre, l'accueil souhaite son anniversaire au patron. Un seul
+# jour dans l'année, un seul écran : c'est une attention, pas une fonction.
+JOUR_PAPOUNET = (11, 18)
+SOUHAIT = "JOYEUX ANNIVERSAIRE PAPOUNET"
+# Des teintes moyennes, lisibles sur fond blanc comme sur fond sombre : le
+# logiciel suit le thème du Mac et la fête ne doit pas disparaître à la
+# tombée de la nuit.
+TEINTES_FETE = ("#e4572e", "#f2a541", "#56b870", "#29a0b1",
+                "#4a7fd4", "#9a6fd4", "#e0609a", "#d9544d")
+
+
+def souhait_colore(texte: str = SOUHAIT) -> str:
+    """Le message en lettres de toutes les couleurs."""
+    morceaux = []
+    rang = 0
+    for lettre in texte:
+        if lettre == " ":
+            morceaux.append("&nbsp;&nbsp;")
+            continue
+        teinte = TEINTES_FETE[rang % len(TEINTES_FETE)]
+        morceaux.append(f"<span style='color:{teinte};'>{lettre}</span>")
+        rang += 1
+    return "".join(morceaux)
+
+
+def c_est_la_fete(jour=None) -> bool:
+    """Sommes-nous le 18 novembre ?"""
+    jour = jour or date.today()
+    return (jour.month, jour.day) == JOUR_PAPOUNET
+
 
 STYLE_CARTE = """
 QPushButton {
@@ -120,6 +153,15 @@ class VueAccueil(QWidget):
         self.chiffre_facture = Chiffre("facturé cette année")
         self.chiffre_impaye = Chiffre("restant à encaisser")
 
+        self.fete = QLabel()
+        self.fete.setTextFormat(Qt.TextFormat.RichText)
+        self.fete.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        police_fete = self.fete.font()
+        police_fete.setPointSize(30)
+        police_fete.setBold(True)
+        self.fete.setFont(police_fete)
+        self.fete.setVisible(False)
+
         self.bandeau_maj = QWidget()
         self.libelle_maj = QLabel()
         ligne_maj = QHBoxLayout(self.bandeau_maj)
@@ -205,6 +247,7 @@ class VueAccueil(QWidget):
         disposition.setContentsMargins(22, 18, 22, 18)
         disposition.setSpacing(16)
         disposition.addWidget(entete)
+        disposition.addWidget(self.fete)
         disposition.addWidget(self.bandeau_maj)
         disposition.addWidget(self.avertissement)
         disposition.addWidget(bandeau)
@@ -225,6 +268,11 @@ class VueAccueil(QWidget):
         francais = QLocale(QLocale.Language.French, QLocale.Country.France)
         self.jour.setText(
             francais.toString(QDate.currentDate(), "dddd d MMMM yyyy").capitalize())
+
+        fete = c_est_la_fete()
+        self.fete.setVisible(fete)
+        if fete:
+            self.fete.setText(souhait_colore())
 
         stats = self.depot.statistiques()
         self.chiffre_attente.definir(euros(stats["ht_en_attente"]) + " HT")
