@@ -80,7 +80,7 @@ def entete(ctx: Contexte) -> str:
     decennale = ""
     if s.assurance_nom:
         contrat = f" n° {s.assurance_contrat}" if s.assurance_contrat else ""
-        lignes = [f"Assurance de responsabilité décennale{contrat}",
+        lignes = [f"Assurance décennale{contrat}",
                   s.assurance_nom]
         if s.assurance_couverture:
             lignes.append(f"Garantie accordée sur les chantiers exécutés en "
