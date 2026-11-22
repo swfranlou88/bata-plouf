@@ -553,6 +553,13 @@ def liste_deroulante(valeurs, selection="", formateur=str) -> QComboBox:
         index = boite.findData(selection)
         if index < 0:
             index = boite.findText(str(selection))
+        if index < 0 and selection != "":
+            # Une valeur venue d'ailleurs — une unité de l'ancien logiciel,
+            # « boi » ou « sea » — ne doit pas se perdre parce qu'elle n'est
+            # pas dans la liste : sans cela, ouvrir la fiche puis
+            # l'enregistrer la remplaçait en silence par la première venue.
+            boite.insertItem(0, formateur(selection), selection)
+            index = 0
         if index >= 0:
             boite.setCurrentIndex(index)
     return boite

@@ -410,6 +410,7 @@ class DialogueArticle(DialogueBase):
         self.detail.setPlaceholderText(
             "Précision imprimée sous la désignation, sur le devis du client")
         self.ajouter("Détail imprimé", self.detail)
+        self._composition_vivante = False
         self.type = self.ajouter("Type", liste_deroulante(TYPES_ARTICLE, a.type))
         self.unite = self.ajouter("Unité", liste_deroulante(UNITES, a.unite))
         self.prix_achat = champ_euros(a.prix_achat)
@@ -435,6 +436,10 @@ class DialogueArticle(DialogueBase):
 
         if a.type == "ouvrage" or a.composants:
             self.ajouter("Composition", self._composition(a))
+        # À partir d'ici seulement, toucher à la composition refait le prix :
+        # pendant le montage, le tableau se remplit et rien n'a encore été
+        # décidé par la personne qui ouvre la fiche.
+        self._composition_vivante = True
 
         self.prix_achat.valueChanged.connect(self._suivre_achat)
         self.prix_achat.valueChanged.connect(self._marge)
@@ -522,17 +527,39 @@ class DialogueArticle(DialogueBase):
         self.composants.retirer(rangs)
         self._resumer()
 
+    def _total_composition(self) -> float:
+        """Ce que coûte une unité d'ouvrage, au prix de vente des composants."""
+        total = 0.0
+        for composant in self.composants.lignes:
+            fiche = self.depot.article(composant.article_id)
+            if fiche is not None:
+                total += (composant.quantite or 0.0) * (fiche.prix_vente or 0.0)
+        return total
+
+    def _suivre_composition(self) -> None:
+        """Le prix de vente suit la composition : c'est elle qui le fabrique.
+
+        Un ouvrage vaut ce que valent ses heures et sa matière — c'est ainsi
+        que l'ancien logiciel les chiffrait, et la reprise l'a confirmé sur
+        1 189 ouvrages sur 1 274. Changer le temps de pose sans que le prix
+        bouge, c'était laisser le devis sur l'ancien tarif.
+
+        Le prix reste modifiable ensuite : une affaire se négocie.
+        """
+        if not self._composition_vivante:
+            return
+        total = self._total_composition()
+        if total > 0:
+            self.prix_vente.setValue(round(total, 2))
+
     def _resumer(self) -> None:
         """Ce que la composition dit du prix, à côté de ce qui est saisi."""
         heures = sum(c.quantite for c in self.composants.lignes
                      if est_du_temps(c.unite))
         matiere = sum(1 for c in self.composants.lignes
                       if not est_du_temps(c.unite))
-        total = 0.0
-        for composant in self.composants.lignes:
-            fiche = self.depot.article(composant.article_id)
-            if fiche is not None:
-                total += (composant.quantite or 0.0) * (fiche.prix_vente or 0.0)
+        total = self._total_composition()
+        self._suivre_composition()
         unite = self.unite.currentText() or "unité"
         # Court : la fiche n'est pas large, et ce résumé se lit d'un coup
         # d'œil pour comparer au prix de vente saisi juste au-dessus.

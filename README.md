@@ -164,6 +164,13 @@ ce qui est parti chez le client doit se réimprimer à l'identique, même si
 les textes changent ensuite. Un texte écrit à la main dans le document
 l'emporte toujours.
 
+La **composition fabrique le prix** : changer le temps de pose ou la matière
+d'un ouvrage refait son prix de vente — somme des composants à leur prix de
+vente, comme l'ancien logiciel les chiffrait — et la ligne du devis ouvert
+suit aussitôt. Le prix reste modifiable après coup : une affaire se négocie.
+Ouvrir une fiche sans toucher à sa composition ne réécrit rien, pour ne pas
+effacer un prix négocié.
+
 Il n'y a plus de **remise**, ni par ligne ni sur l'ensemble : zéro sur les
 378 pièces reprises, une colonne et un champ pour rien. Les documents qui en
 porteraient une l'impriment toujours et la déduisent toujours ; seul le
